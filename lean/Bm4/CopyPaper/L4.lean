@@ -59,10 +59,10 @@ theorem col_lead_m (q : ℕ) : b.tA.col (b.pos q 0) b.m = A.col b.p b.m := by
 `k`-ancestor of `P⁽ᑫ⁾` lies in `G`.  The direct parent is `< p` by Lemma 6.2 (2), and an
 ancestor is at most the last member of its chain. -/
 theorem anc_lt_p_of_no_intECand {k q : ℕ}
-    (h : ∀ y, ¬ IntECand b.tA b.p k y (b.pos q 0)) {y : ℕ}
+    (h : ∀ y, ¬ IntECand b.tA b.p (b.pos q 0 + 1) k y (b.pos q 0)) {y : ℕ}
     (hanc : anc b.tA k y (b.pos q 0)) : y < b.p := by
   obtain ⟨u, hu, hup⟩ := anc_last_step hanc
-  exact lt_of_le_of_lt (ancEq_le hu) (parent_lt_of_no_intECand h hup)
+  exact lt_of_le_of_lt (ancEq_le hu) (parent_lt_of_no_intECand (Nat.lt_succ_self _) h hup)
 
 /-- Turning the entry inequality `P(m₀) ≤ D_i(m₀)` into the absence of internal valid
 `m₀`-candidates of `P⁽ᑫ⁾`.  The inequality is only required for those columns that actually
@@ -70,8 +70,8 @@ occur as structural `m₀`-candidates, which is what the two lemmas below can su
 theorem no_intECand_of_entry {q : ℕ}
     (hentry : ∀ a i, a < q → i < b.s → cand b.tA b.m (b.pos a i) (b.pos q 0) →
       A.col b.p b.m ≤ A.col (b.p + i) b.m) :
-    ∀ y, ¬ IntECand b.tA b.p b.m y (b.pos q 0) := by
-  rintro y ⟨hy, hc, hv⟩
+    ∀ y, ¬ IntECand b.tA b.p (b.pos q 0 + 1) b.m y (b.pos q 0) := by
+  rintro y ⟨hy, -, hc, hv, -, -⟩
   have hylt : y < b.pos q 0 := cand_lt hc
   rcases b.lt_pos_cases b.s_pos hylt with h | ⟨a, i, hi, rfl, hcase⟩
   · exact absurd hy (not_le.mpr h)
@@ -110,15 +110,15 @@ theorem lemma_6_9 (hm : b.m = 0) : b.Claim4 := by
 /-- `(C6)ₖ` used backwards: ancestry from copy `a` into the head of *any* later copy already
 happens into the head of copy `a+1`.  (Nothing to do when the target is copy `a+1` itself.) -/
 theorem anc_lead_of_anc_lead {k a i : ℕ} (h6 : b.Claim6 k) (hi : i < b.s) :
-    ∀ q, a < q → anc b.tA k (b.pos a i) (b.pos q 0) →
+    ∀ q, q ≤ b.N → a < q → anc b.tA k (b.pos a i) (b.pos q 0) →
       anc b.tA k (b.pos a i) (b.pos (a + 1) 0) := by
   intro q
   induction q with
-  | zero => intro h; exact absurd h (Nat.not_lt_zero a)
+  | zero => intro _ h; exact absurd h (Nat.not_lt_zero a)
   | succ q ih =>
-    intro haq hanc
+    intro hqN haq hanc
     rcases Nat.lt_or_ge a q with hlt | hge
-    · exact ih hlt ((h6 a q i 0 hlt hi b.s_pos).mpr hanc)
+    · exact ih (by omega) hlt ((h6 a q hlt hqN i 0 hi b.s_pos).mpr hanc)
     · have haq' : a = q := by omega
       subst haq'
       exact hanc
@@ -136,6 +136,18 @@ theorem lemma_6_10 (hm : 0 < b.m) (h3 : b.Claim3 (b.m - 1)) (h6 : b.Claim6 (b.m 
   rw [hpred] at h3 h6
   intro k hk q y _ hanc
   have hanc' : anc b.tA b.m y (b.pos q 0) := anc_mono hk hanc
+  -- `P⁽ᑫ⁾` is a column of `Ã`, so `q` is within the paper's copy range `0,…,N`.
+  have hqN : q ≤ b.N := by
+    obtain ⟨u, -, hup⟩ := anc_last_step hanc'
+    have hlt := parent_target_lt hup
+    rw [b.tA_len] at hlt
+    simp only [BadRoot.pos, Nat.add_zero] at hlt
+    have hs := b.s_pos
+    have hq : q < b.N + 1 := by
+      by_contra hcon
+      have : (b.N + 1) * b.s ≤ q * b.s := Nat.mul_le_mul_right _ (by omega)
+      omega
+    omega
   refine b.anc_lt_p_of_no_intECand (b.no_intECand_of_entry ?_) hanc'
   intro a i haq hi hc
   rcases Nat.eq_zero_or_pos i with rfl | hi0
@@ -144,9 +156,9 @@ theorem lemma_6_10 (hm : 0 < b.m) (h3 : b.Claim3 (b.m - 1)) (h6 : b.Claim6 (b.m 
     have hcanc : anc b.tA m' (b.pos a i) (b.pos q 0) := by rw [hm'] at hc; exact hc
     -- `(C6)_{m₀-1}`: move the target down to the head of copy `a+1`.
     have hstep : anc b.tA m' (b.pos a i) (b.pos (a + 1) 0) :=
-      b.anc_lead_of_anc_lead h6 hi q haq hcanc
+      b.anc_lead_of_anc_lead h6 hi q hqN haq hcanc
     -- `(C3)_{m₀-1}`: transport to the `A`-side.
-    have hbridge := h3 (a + 1) i (Nat.succ_pos a) hi
+    have hbridge := h3 (a + 1) (by omega) i (Nat.succ_pos a) hi
     simp only [Nat.add_sub_cancel] at hbridge
     have hA : anc A m' (b.p + i) (A.len - 1) := hbridge.mp hstep
     have hcA : cand A b.m (b.p + i) (A.len - 1) := by rw [hm']; exact hA

@@ -470,9 +470,15 @@ def pairAx : Fm := Fm.all 0 (Fm.all 1 (Fm.ex 2 (Fm.and (Fm.mem 0 2) (Fm.mem 1 2)
 /-- Union: `∀x ∃y ∀u ∈ x, ∀v ∈ u, v ∈ y`. -/
 def unionAx : Fm := Fm.all 0 (Fm.ex 1 (Fm.ball 2 0 (Fm.ball 3 2 (Fm.mem 3 1))))
 
-/-- Infinity: `∃x ((∃u, u ∈ x) ∧ ∀u ∈ x, ∃v ∈ x, u ∈ v)`. -/
+/-- Infinity: there is an inductive set, that is, one containing ∅ and closed under
+`u ↦ u ∪ {u}`.  Both `y = ∅` and `v = u ∪ {u}` are rendered by Δ₀ formulas of `{∈}`:
+`∃x ((∃y ∈ x, ∀z ∈ y, ⊥) ∧ ∀u ∈ x, ∃v ∈ x (u ∈ v ∧ (∀w ∈ u, w ∈ v) ∧ ∀w ∈ v, (w ∈ u ∨ w = u)))`. -/
 def infAx : Fm :=
-  Fm.ex 0 (Fm.and (Fm.ex 1 (Fm.mem 1 0)) (Fm.ball 1 0 (Fm.bex 2 0 (Fm.mem 1 2))))
+  Fm.ex 0 (Fm.and
+    (Fm.bex 1 0 (Fm.ball 2 1 Fm.falsum))
+    (Fm.ball 1 0 (Fm.bex 2 0 (Fm.and (Fm.mem 1 2)
+      (Fm.and (Fm.ball 3 1 (Fm.mem 3 2))
+        (Fm.ball 3 2 (Fm.or (Fm.mem 3 1) (Fm.eq 3 1))))))))
 
 /-- Δ₀-separation for `φ`: `∀j ∀x ∃y ∀i (i ∈ y ↔ (i ∈ x ∧ φ))`; `j` is the parameter variable. -/
 def sepAx (φ : Fm) (i j x y : ℕ) : Fm :=
@@ -701,7 +707,7 @@ def KPAxCode (h w d : ZFSet.{u}) : Prop :=
   d = Fm.code.{u} unionAx ∨ d = Fm.code.{u} infAx ∨
   ∃ a ∈ w, ∃ b ∈ w, ∃ x ∈ w, ∃ y ∈ w, ∃ c ∈ h, ∃ q ∈ h,
     (∀ k ∈ w, NotFreeW h w k d) ∧ AllsW h w q d ∧
-    ((IsDelta0CodeW h w c ∧ NotFreeW h w x c ∧ NotFreeW h w y c ∧
+    ((IsDelta0CodeW h w c ∧ NotFreeW h w y c ∧
         a ≠ b ∧ a ≠ x ∧ a ≠ y ∧ b ≠ x ∧ b ≠ y ∧ x ≠ y ∧
         (q = sepCode a b x y c ∨ q = collCode a b x y c)) ∨
       (NotFreeW h w a c ∧ a ≠ b ∧ q = indCode a b c))
@@ -719,8 +725,6 @@ theorem delta0_kpAxCode (h w d : ℕ) (hhw : h ≠ w) (hhd : h ≠ d) (hwd : w �
     (by omega)).ball (m + 6) w (by omega)
   have C2 := delta0_allsW h w (m + 5) d (by omega) (by omega) hhd (by omega) hwd (by omega)
   have A2 := delta0_isDelta0CodeW h w (m + 4) (by omega) (by omega) (by omega)
-  have A3 := delta0_notFreeW h w (m + 2) (m + 4) (by omega) (by omega) (by omega) (by omega)
-    (by omega) (by omega)
   have A4 := delta0_notFreeW h w (m + 3) (m + 4) (by omega) (by omega) (by omega) (by omega)
     (by omega) (by omega)
   have A5 := (Delta0Def.eq m (m + 1)).not
@@ -730,7 +734,7 @@ theorem delta0_kpAxCode (h w d : ℕ) (hhw : h ≠ w) (hhd : h ≠ d) (hwd : w �
   have A9 := (Delta0Def.eq (m + 1) (m + 3)).not
   have A10 := (Delta0Def.eq (m + 2) (m + 3)).not
   have A11 := (d0sh_sepCode (m + 5) m (by omega)).or (d0sh_collCode (m + 5) m (by omega))
-  have br1 := A2.and (A3.and (A4.and (A5.and (A6.and (A7.and (A8.and (A9.and (A10.and A11))))))))
+  have br1 := A2.and (A4.and (A5.and (A6.and (A7.and (A8.and (A9.and (A10.and A11)))))))
   have B1 := delta0_notFreeW h w m (m + 4) (by omega) (by omega) (by omega) (by omega)
     (by omega) (by omega)
   have br2 := B1.and (A5.and (d0sh_indCode (m + 5) m (by omega)))
@@ -783,8 +787,7 @@ theorem kpAxCode_inf : KPAxCode (L Ordinal.omega0) ωZ (Fm.code.{u} infAx) :=
 
 /-- The common part of the two Δ₀ schema instances: the universal closure `alls l ψ` of an
 instance `ψ`, closed because `l` covers `Fm.fv ψ`. -/
-theorem kpAxCode_schema {φ : Fm} (hφ : Fm.IsDelta0 φ) {i j x y : ℕ}
-    (hx : x ∉ Fm.fv φ) (hy : y ∉ Fm.fv φ)
+theorem kpAxCode_schema {φ : Fm} (hφ : Fm.IsDelta0 φ) {i j x y : ℕ} (hy : y ∉ Fm.fv φ)
     (hij : i ≠ j) (hix : i ≠ x) (hiy : i ≠ y) (hjx : j ≠ x) (hjy : j ≠ y) (hxy : x ≠ y)
     {ψ : Fm} (hψ : ψ = sepAx φ i j x y ∨ ψ = collAx φ i j x y)
     (l : List ℕ) (hl : Fm.fv ψ ⊆ l.toFinset) :
@@ -793,8 +796,7 @@ theorem kpAxCode_schema {φ : Fm} (hφ : Fm.IsDelta0 φ) {i j x y : ℕ}
     ⟨natZ i, natZ_mem_ωZ _, natZ j, natZ_mem_ωZ _, natZ x, natZ_mem_ωZ _,
       natZ y, natZ_mem_ωZ _, Fm.code.{u} φ, φ.code_mem_Lω,
       Fm.code.{u} ψ, ψ.code_mem_Lω, ?_, allsW_of_alls ψ l,
-      Or.inl ⟨(isDelta0CodeW_iff _).mpr ⟨φ, hφ, rfl⟩,
-        (notFreeW_iff x _).mpr ⟨φ, rfl, hx⟩, (notFreeW_iff y _).mpr ⟨φ, rfl, hy⟩,
+      Or.inl ⟨(isDelta0CodeW_iff _).mpr ⟨φ, hφ, rfl⟩, (notFreeW_iff y _).mpr ⟨φ, rfl, hy⟩,
         natZ_ne hij, natZ_ne hix, natZ_ne hiy, natZ_ne hjx, natZ_ne hjy, natZ_ne hxy, ?_⟩⟩))))
   · exact closedW_of_fv_empty
       (by rw [Fm.fv_alls]; exact Finset.sdiff_eq_empty_iff_subset.mpr hl)
@@ -802,19 +804,17 @@ theorem kpAxCode_schema {φ : Fm} (hφ : Fm.IsDelta0 φ) {i j x y : ℕ}
     · exact Or.inl (sepCode_eq φ i j x y).symm
     · exact Or.inr (collCode_eq φ i j x y).symm
 
-theorem kpAxCode_sep {φ : Fm} (hφ : Fm.IsDelta0 φ) {i j x y : ℕ}
-    (hx : x ∉ Fm.fv φ) (hy : y ∉ Fm.fv φ)
+theorem kpAxCode_sep {φ : Fm} (hφ : Fm.IsDelta0 φ) {i j x y : ℕ} (hy : y ∉ Fm.fv φ)
     (hij : i ≠ j) (hix : i ≠ x) (hiy : i ≠ y) (hjx : j ≠ x) (hjy : j ≠ y) (hxy : x ≠ y)
     (l : List ℕ) (hl : Fm.fv (sepAx φ i j x y) ⊆ l.toFinset) :
     KPAxCode (L Ordinal.omega0) ωZ (Fm.code.{u} (Fm.alls l (sepAx φ i j x y))) :=
-  kpAxCode_schema hφ hx hy hij hix hiy hjx hjy hxy (Or.inl rfl) l hl
+  kpAxCode_schema hφ hy hij hix hiy hjx hjy hxy (Or.inl rfl) l hl
 
-theorem kpAxCode_coll {φ : Fm} (hφ : Fm.IsDelta0 φ) {i j x y : ℕ}
-    (hx : x ∉ Fm.fv φ) (hy : y ∉ Fm.fv φ)
+theorem kpAxCode_coll {φ : Fm} (hφ : Fm.IsDelta0 φ) {i j x y : ℕ} (hy : y ∉ Fm.fv φ)
     (hij : i ≠ j) (hix : i ≠ x) (hiy : i ≠ y) (hjx : j ≠ x) (hjy : j ≠ y) (hxy : x ≠ y)
     (l : List ℕ) (hl : Fm.fv (collAx φ i j x y) ⊆ l.toFinset) :
     KPAxCode (L Ordinal.omega0) ωZ (Fm.code.{u} (Fm.alls l (collAx φ i j x y))) :=
-  kpAxCode_schema hφ hx hy hij hix hiy hjx hjy hxy (Or.inr rfl) l hl
+  kpAxCode_schema hφ hy hij hix hiy hjx hjy hxy (Or.inr rfl) l hl
 
 theorem kpAxCode_ind {φ : Fm} {i j : ℕ} (hi : i ∉ Fm.fv φ) (hij : i ≠ j)
     (l : List ℕ) (hl : Fm.fv (indAx φ i j) ⊆ l.toFinset) :
@@ -836,7 +836,7 @@ theorem kpAxCode_iff (d : ZFSet.{u}) :
     KPAxCode (L Ordinal.omega0) ωZ d ↔
       d = Fm.code.{u} extAx ∨ d = Fm.code.{u} emptyAx ∨ d = Fm.code.{u} pairAx ∨
       d = Fm.code.{u} unionAx ∨ d = Fm.code.{u} infAx ∨
-      (∃ (φ : Fm) (i j x y : ℕ), Fm.IsDelta0 φ ∧ x ∉ Fm.fv φ ∧ y ∉ Fm.fv φ ∧
+      (∃ (φ : Fm) (i j x y : ℕ), Fm.IsDelta0 φ ∧ y ∉ Fm.fv φ ∧
           i ≠ j ∧ i ≠ x ∧ i ≠ y ∧ j ≠ x ∧ j ≠ y ∧ x ≠ y ∧
           ∃ (l : List ℕ) (ψ : Fm), (ψ = sepAx φ i j x y ∨ ψ = collAx φ i j x y) ∧
             Fm.fv ψ ⊆ l.toFinset ∧ d = Fm.code.{u} (Fm.alls l ψ)) ∨
@@ -863,14 +863,12 @@ theorem kpAxCode_iff (d : ZFSet.{u}) :
     obtain ⟨j, rfl⟩ := mem_ωZ_iff.mp hb
     obtain ⟨x', rfl⟩ := mem_ωZ_iff.mp hx
     obtain ⟨y', rfl⟩ := mem_ωZ_iff.mp hy
-    rcases HH with ⟨hd0, hxn, hyn, hab, hax, hay, hbx, hby, hxy, hshape⟩ | ⟨han, hab, hshape⟩
+    rcases HH with ⟨hd0, hyn, hab, hax, hay, hbx, hby, hxy, hshape⟩ | ⟨han, hab, hshape⟩
     · obtain ⟨φ, hφ, rfl⟩ := (isDelta0CodeW_iff _).mp hd0
-      obtain ⟨ψx, hψx, hxfv⟩ := (notFreeW_iff x' _).mp hxn
       obtain ⟨ψy, hψy, hyfv⟩ := (notFreeW_iff y' _).mp hyn
-      have hxφ : x' ∉ Fm.fv φ := by rw [Fm.code_injective hψx]; exact hxfv
       have hyφ : y' ∉ Fm.fv φ := by rw [Fm.code_injective hψy]; exact hyfv
       refine Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
-        ⟨φ, i, j, x', y', hφ, hxφ, hyφ,
+        ⟨φ, i, j, x', y', hφ, hyφ,
           fun e => hab (by rw [e]), fun e => hax (by rw [e]), fun e => hay (by rw [e]),
           fun e => hbx (by rw [e]), fun e => hby (by rw [e]), fun e => hxy (by rw [e]), ?_⟩)))))
       rcases hshape with hshape | hshape
@@ -883,14 +881,14 @@ theorem kpAxCode_iff (d : ZFSet.{u}) :
       exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr
         ⟨φ, i, j, hifv, fun e => hab (by rw [e]), l, hlsub, hdl⟩)))))
   · rintro (rfl | rfl | rfl | rfl | rfl |
-      ⟨φ, i, j, x, y, hφ, hx, hy, hij, hix, hiy, hjx, hjy, hxy, l, ψ, hψ, hlsub, rfl⟩ |
+      ⟨φ, i, j, x, y, hφ, hy, hij, hix, hiy, hjx, hjy, hxy, l, ψ, hψ, hlsub, rfl⟩ |
       ⟨φ, i, j, hi, hij, l, hlsub, rfl⟩)
     · exact kpAxCode_ext
     · exact kpAxCode_empty
     · exact kpAxCode_pair
     · exact kpAxCode_union
     · exact kpAxCode_inf
-    · exact kpAxCode_schema hφ hx hy hij hix hiy hjx hjy hxy hψ l hlsub
+    · exact kpAxCode_schema hφ hy hij hix hiy hjx hjy hxy hψ l hlsub
     · exact kpAxCode_ind hi hij l hlsub
 
 /-- Every code recognised by `KPAxCode` is the code of a **sentence**.  This is what makes
@@ -903,7 +901,7 @@ theorem fv_eq_empty_of_kpAxCode {d : ZFSet.{u}} (hd : KPAxCode (L Ordinal.omega0
     rw [Fm.code_injective (hcode.symm.trans hdl), Fm.fv_alls]
     exact Finset.sdiff_eq_empty_iff_subset.mpr hlsub
   rcases (kpAxCode_iff d).mp hd with H | H | H | H | H |
-    ⟨_, _, _, _, _, -, -, -, -, -, -, -, -, -, l, ψ, -, hlsub, hdl⟩ |
+    ⟨_, _, _, _, _, -, -, -, -, -, -, -, -, l, ψ, -, hlsub, hdl⟩ |
     ⟨_, _, _, -, -, l, hlsub, hdl⟩
   · rw [Fm.code_injective (hcode.symm.trans H)]; decide
   · rw [Fm.code_injective (hcode.symm.trans H)]; decide
@@ -917,7 +915,7 @@ theorem fv_eq_empty_of_kpAxCode {d : ZFSet.{u}} (hd : KPAxCode (L Ordinal.omega0
 theorem exists_fm_of_kpAxCode {d : ZFSet.{u}} (hd : KPAxCode (L Ordinal.omega0) ωZ d) :
     ∃ φ : Fm, d = Fm.code.{u} φ := by
   rcases (kpAxCode_iff d).mp hd with H | H | H | H | H |
-    ⟨_, _, _, _, _, -, -, -, -, -, -, -, -, -, l, ψ, -, -, hs⟩ | ⟨φ, i, j, -, -, l, -, hs⟩
+    ⟨_, _, _, _, _, -, -, -, -, -, -, -, -, l, ψ, -, -, hs⟩ | ⟨φ, i, j, -, -, l, -, hs⟩
   · exact ⟨extAx, H⟩
   · exact ⟨emptyAx, H⟩
   · exact ⟨pairAx, H⟩

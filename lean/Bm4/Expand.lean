@@ -33,45 +33,40 @@ theorem badRoot_parent (h : LastHasParent A) : parent A (m₀ A) (badRoot A) (A.
   rw [dif_pos hp]
   exact Classical.choose_spec hp
 
-/-- The bad-root data of an array whose last column has a parent. -/
-noncomputable def toBadRoot (h : LastHasParent A) : BadRoot A :=
-  ⟨badRoot A, m₀ A, badRoot_parent h⟩
+/-- The data of Definition 5.1 for `A[N]`: the bad root, its row, and the number of copies. -/
+noncomputable def toBadRoot (h : LastHasParent A) (N : ℕ) : BadRoot A :=
+  ⟨badRoot A, m₀ A, N, badRoot_parent h⟩
 
-theorem toBadRoot_p (h : LastHasParent A) : (toBadRoot h).p = badRoot A := rfl
-theorem toBadRoot_m (h : LastHasParent A) : (toBadRoot h).m = m₀ A := rfl
+theorem toBadRoot_p (h : LastHasParent A) (N : ℕ) : (toBadRoot h N).p = badRoot A := rfl
+theorem toBadRoot_m (h : LastHasParent A) (N : ℕ) : (toBadRoot h N).m = m₀ A := rfl
+theorem toBadRoot_N (h : LastHasParent A) (N : ℕ) : (toBadRoot h N).N = N := rfl
 
-theorem expand_eq (h : LastHasParent A) (N : ℕ) :
-    expand A N = ⟨(toBadRoot h).p + (N + 1) * (toBadRoot h).s, (toBadRoot h).tA.col⟩ := by
+/-- `A[N]` **is** the array `Ã` of Definition 5.1. -/
+theorem expand_eq (h : LastHasParent A) (N : ℕ) : expand A N = (toBadRoot h N).tA := by
   have h0 : A.len ≠ 0 := by have := h.1; omega
   simp only [expand, h0, if_false, h, if_true]
   rfl
 
-theorem expand_col (h : LastHasParent A) (N : ℕ) : (expand A N).col = (toBadRoot h).tA.col := by
+theorem expand_col (h : LastHasParent A) (N : ℕ) : (expand A N).col = (toBadRoot h N).tA.col := by
   rw [expand_eq h N]
 
 theorem expand_len (h : LastHasParent A) (N : ℕ) :
-    (expand A N).len = (toBadRoot h).p + (N + 1) * (toBadRoot h).s := by
-  rw [expand_eq h N]
+    (expand A N).len = (toBadRoot h N).p + (N + 1) * (toBadRoot h N).s := by
+  rw [expand_eq h N]; rfl
 
 /-- The last column of `A[N]` is column `s - 1` of copy `N`. -/
 theorem expand_last (h : LastHasParent A) (N : ℕ) :
-    (expand A N).len - 1 = (toBadRoot h).pos N ((toBadRoot h).s - 1) := by
+    (expand A N).len - 1 = (toBadRoot h N).pos N ((toBadRoot h N).s - 1) := by
   rw [expand_len h N]
   unfold BadRoot.pos
-  have := (toBadRoot h).s_pos
+  have := (toBadRoot h N).s_pos
   rw [add_mul, one_mul]
   omega
 
 /-- Expansion does not change the number of rows (built into `Arr r`); it changes the length. -/
 theorem expand_len_pos (h : LastHasParent A) (N : ℕ) : 0 < (expand A N).len := by
   rw [expand_len h N]
-  have := (toBadRoot h).s_pos
+  have := (toBadRoot h N).s_pos
   nlinarith
-
-/-- Ancestors in the expanded array: the closed form, phrased for `expand`. -/
-theorem anc_expand_iff (h : LastHasParent A) (N k : ℕ) {q j : ℕ} (hj : j < (toBadRoot h).s)
-    (y : ℕ) : anc (expand A N) k y ((toBadRoot h).pos q j) ↔ (toBadRoot h).AncForm k y q j := by
-  rw [← (toBadRoot h).anc_tA_iff k hj y]
-  exact anc_congr_iff (fun x _ k' => by rw [expand_col h N]) y
 
 end BM4

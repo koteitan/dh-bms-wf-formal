@@ -2,7 +2,7 @@
 
 # BM4 停止性証明の Lean 4 形式化
 
-DH の論文「Bashicu Matrix System ver. 4 の停止性と展開関係の整礎性」の形式化。
+DH 氏の論文「Bashicu Matrix System ver. 4 の停止性と展開関係の整礎性」の形式化。
 Lean 4 v4.30.0、Mathlib v4.30.0。
 
 ## 状態
@@ -72,14 +72,12 @@ Part III（`Bm4/SetTheory/`）がその実体を構成する。従って上の 2
 | `SatInL.lean` | 補題 10.5(1) | 許容な `L θ` の**内部**に充足コードが存在する |
 | `LCode.lean`, `LCodeEx.lean` | 定義 9.1, 補題 9.2, 10.5(2) | L 階層の内部コード、健全性と存在 |
 | `Blk.lean` | §12 | 代入のブロック同時更新 |
-| `Truth.lean`, `TrCorrect.lean`, `BaseOK.lean` | §13 | 真理述語 `Tr_{Σ̂q}` / `Tr_{Π̂q}`、補題 13.5（複雑度）、定理 13.6（正しさ） |
+| `Truth.lean`, `TrCorrect.lean`, `BaseOK.lean` | §13 | 真理述語の Δ₀ 基底（定義 13.2）と補題 13.3 |
 | `Elem.lean` | §14 | `≺*q`、有限段の Tarski–Vaught 判定 |
-| `TV.lean`, `StRel.lean` | §14〜15 | `TV_q`、`St_k`、`Rel_k` とその複雑度（補題 15.1）・正しさ（補題 15.3, 15.5） |
-| `AdmP.lean`, `AdmPOK.lean` | 定義 11.1, 補題 11.2 | Δ₀ 収集から直に作った内部 Σ̂₁ 許容性述語 |
 | `KPAx.lean`, `KPSat.lean`, `AdmKP.lean` | 定義 11.1, 補題 11.2 | **論文の**内部許容性述語。KP 公理のコード `KPAxCode`、その `L θ` での真理、`AdmKP` と `admKP_iff` |
 | `BlkP.lean` | §12 | 論文どおり定義域を**穴埋め**するブロック更新 |
 | `BFCodeD.lean` | 定義 12.1 | 論文どおりブロック変数の**相異性**を要求するコード認識子 |
-| `TrP.lean`, `StRelP.lean` | §13〜15 | 穴埋め版の上の真理述語と `tvqP_iff_elemHat`。**補題 15.3 を論文の議論で**、複雑度の迂回なしに |
+| `TrP.lean`, `TrPV.lean`, `StRelP.lean`, `StKP.lean` | §13〜15 | 定義 13.4 の真理述語 `Tr_{Σ̂q}` / `Tr_{Π̂q}`（§12 の穴埋め付きブロック更新の上）、補題 13.5（複雑度）、定理 13.6（正しさ。`TrPV.lean` が外部宇宙版）、`TV_q`・`St_k`・`Rel_k` とその正しさ（補題 15.3, 15.5） |
 | `StKP.lean` | 定義 15.2, 15.4, 補題 15.3, 15.5 | 穴埋め経路の `St_k` と `Rel_k`、その複雑度と正しさ |
 | `Omega1.lean`, `Skolem.lean`, `AdmTrans.lean` | §16 | ω₁ 未満の `L γ` の可算性、ω₁ の許容性、初期対 `L Λ ≺ L ω₁` |
 | `Good.lean`, `Stable.lean` | §15 | `GoodOrd` 界面、ラベルとしての許容順序数、`◁ₖ` |
@@ -99,10 +97,10 @@ Part III（`Bm4/SetTheory/`）がその実体を構成する。従って上の 2
   13.2・13.4 の `Form` 判定を持つ（`Truth.lean`、`TrP.lean`）。補題 15.3 は真理述語の正しさから
   証明する（`StRelP.lean`）。内部許容性は空代入での KP 公理の真理で、スキーマのインスタンスは
   全称閉包の形で認識される（`KPAx.lean`、`AdmKP.lean`）。
-- `Reflect.lean` は `AdmKP` / `StKP` / `RelKP` を使うので、主定理は `AdmP` / `StK` / `RelK` に
-  依存しない。`stK_iff`、`relK_iff`、`admP_iff'` を `sorry` に置き換えても
-  `terminates_unconditional` は `sorryAx` を拾わないことで確認済み。旧述語を残してあるのは、
-  論文経路がその補助補題の上に建っているため。
+- §12〜§15 はかつて二重に形式化されていた（∅ 穴埋めを持たないブロック更新に基づく緩い版と、
+  論文どおりの版）。主定理が緩い版を使っていないことを `sorry` 注入で確かめたうえで、
+  緩い版（`TV.lean`、`StRel.lean` の後半、`Truth.lean` の `TrSigS`/`TrPiS`、`Blk.lean` の
+  `IsBlkUpd`、`AdmP.lean`、`AdmPOK.lean`）は削除した。残るのは論文どおりの一本だけである。
 - 定理 21.1 は論文どおり、選択公理と ω-再帰、そしてラベルの高さの集合の最小元で証明する。
   命題 22.1 は高さの帰納法で証明し直さず、定理 1.2 から導く。
 - `LabelSystem` は Part IV が Part III から使うものだけを束ねている。ラベルの整礎全順序、

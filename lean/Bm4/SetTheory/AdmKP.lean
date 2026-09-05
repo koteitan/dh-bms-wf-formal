@@ -7,12 +7,9 @@
   the predicate `KPTrue` below asks, exactly as the paper does, that `⟨d, ∅⟩` belong to the truth
   part `S` of a satisfaction code for `M` for every code `d` recognised by `KPAxCode`.  Truth at
   the *empty* assignment is enough because `KPAxCode` recognises only codes of sentences (the
-  schema instances are recognised in universally closed form).  (The variant `AdmP` of
-  `Bm4.SetTheory.AdmP` replaces this by the ad hoc `CollTrue`, which spells out Δ₀-collection by
-  hand.)
+  schema instances are recognised in universally closed form).
 -/
 import Bm4.SetTheory.KPSat
-import Bm4.SetTheory.AdmP
 import Bm4.SetTheory.LCodeEx
 
 universe u
@@ -44,8 +41,8 @@ def KPTrue (h w M U S : ZFSet.{u}) : Prop :=
 
 /-- **Definition 11.1**: `η` is admissible, internally, via the truth of the KP axioms.
 
-This is literally the paper's definition: the two Δ₀ conjuncts `ω ∈ η` and `∀ ζ ∈ η, ζ + 1 ∈ η`
-that `AdmP` carries are *not* part of it.  They are recovered inside `admKP_iff` from the truth
+This is literally the paper's definition: no extra Δ₀ conjunct such as `ω ∈ η` or
+`∀ ζ ∈ η, ζ + 1 ∈ η` is part of it.  Both are recovered inside `admKP_iff` from the truth
 of the KP axioms in `L η`; see `omega_lt_of_kpTrue` and `isSuccLimit_of_kpTrue`. -/
 def AdmKP (D : ZFSet.{u} → Prop) (h w η : ZFSet.{u}) : Prop :=
   ∃ M, D M ∧ ∃ c, D c ∧ ∃ U, D U ∧ ∃ S, D S ∧
@@ -146,48 +143,83 @@ def KPSatL (η : Ordinal.{u}) : Prop :=
   ∀ φ : Fm, KPAxCode (L Ordinal.omega0) ωZ (Fm.code.{u} φ) →
     ∀ v : ℕ → ZFSet.{u}, (∀ n, v n ∈ L η) → SatIn (L η) v φ
 
-/-- The infinity axiom, unpacked: `L η` contains a non-empty set with no ∈-maximal element. -/
+/-- The infinity axiom, unpacked: `L η` contains an **inductive set**, that is, a set containing
+`∅` and closed under the successor `u ↦ u ∪ {u} = insert u u`.  The Δ₀ conjuncts of `infAx` say
+`∃ y ∈ x, ∀ z ∈ y, ⊥` (so `y = ∅`) and, for every `u ∈ x`, the existence of a `v ∈ x` with
+`u ∈ v`, `u ⊆ v` and `v ⊆ u ∪ {u}` (so `v = insert u u`). -/
 theorem infAx_content {η : Ordinal.{u}} (hemp : (∅ : ZFSet.{u}) ∈ L η) (hall : KPSatL.{u} η) :
-    ∃ x ∈ L η, (∃ u, u ∈ x) ∧ ∀ u ∈ x, ∃ z ∈ x, u ∈ z := by
+    ∃ x ∈ L η, (∅ : ZFSet.{u}) ∈ x ∧ ∀ u ∈ x, insert u u ∈ x := by
   have hT := L_transitive η
   have h := hall infAx kpAxCode_inf (fun _ => ∅) (fun _ => hemp)
   simp only [infAx, SatIn] at h
   obtain ⟨x, hxL, hx⟩ := sat_ex.mp h
-  obtain ⟨hne, hstep⟩ := sat_and.mp hx
-  obtain ⟨u0, hu0L, hu0⟩ := sat_ex.mp hne
-  simp (disch := omega) only [sat_mem, Function.update_self, Function.update_of_ne] at hu0
-  refine ⟨x, hxL, ⟨u0, hu0⟩, ?_⟩
-  rw [sat_ball_of_ne (show (1 : ℕ) ≠ 0 by decide)] at hstep
-  intro u hu
-  have h1 := hstep u (hT.subset_of_mem hxL hu)
-    (by simpa (disch := omega) only [Function.update_self, Function.update_of_ne] using hu)
-  rw [sat_bex_of_ne (show (2 : ℕ) ≠ 0 by decide)] at h1
-  obtain ⟨z, hzL, hzx, hz⟩ := h1
-  simp (disch := omega) only [Function.update_self, Function.update_of_ne] at hzx
-  simp (disch := omega) only [sat_mem, Function.update_self, Function.update_of_ne] at hz
-  exact ⟨z, hzx, hz⟩
+  obtain ⟨hzero, hstep⟩ := sat_and.mp hx
+  refine ⟨x, hxL, ?_, ?_⟩
+  · -- the element of `x` with no members is `∅`
+    rw [sat_bex_of_ne (show (1 : ℕ) ≠ 0 by decide)] at hzero
+    obtain ⟨y, hyL, hyx, hy⟩ := hzero
+    simp only [Function.update_self] at hyx
+    rw [sat_ball_of_ne (show (2 : ℕ) ≠ 1 by decide)] at hy
+    have hyempty : y = ∅ := by
+      rw [ZFSet.eq_empty]
+      intro z hz
+      exact hy z (hT.subset_of_mem hyL hz)
+        (by simpa only [Function.update_self] using hz)
+    exact hyempty ▸ hyx
+  · rw [sat_ball_of_ne (show (1 : ℕ) ≠ 0 by decide)] at hstep
+    intro u hu
+    have huL : u ∈ L η := hT.subset_of_mem hxL hu
+    have h1 := hstep u huL
+      (by simpa only [Function.update_self] using hu)
+    rw [sat_bex_of_ne (show (2 : ℕ) ≠ 0 by decide)] at h1
+    obtain ⟨z, hzL, hzx, hz⟩ := h1
+    simp (disch := omega) only [Function.update_self, Function.update_of_ne] at hzx
+    obtain ⟨hmem, hz2⟩ := sat_and.mp hz
+    obtain ⟨hsub, hcov⟩ := sat_and.mp hz2
+    simp (disch := omega) only [sat_mem, Function.update_self, Function.update_of_ne] at hmem
+    rw [sat_ball_of_ne (show (3 : ℕ) ≠ 1 by decide)] at hsub
+    rw [sat_ball_of_ne (show (3 : ℕ) ≠ 2 by decide)] at hcov
+    have hzeq : z = insert u u := by
+      apply ZFSet.ext
+      intro w
+      rw [ZFSet.mem_insert_iff]
+      constructor
+      · intro hw
+        have := hcov w (hT.subset_of_mem hzL hw)
+          (by simpa (disch := omega) only [Function.update_self, Function.update_of_ne] using hw)
+        simp (disch := omega) only [sat_or, sat_mem, sat_eq, Function.update_self,
+          Function.update_of_ne] at this
+        exact this.symm
+      · rintro (rfl | hw)
+        · exact hmem
+        · have := hsub w (hT.subset_of_mem huL hw)
+            (by simpa (disch := omega) only [Function.update_self,
+              Function.update_of_ne] using hw)
+          simpa (disch := omega) only [sat_mem, Function.update_self,
+            Function.update_of_ne] using this
+    exact hzeq ▸ hzx
 
-/-- **`ω < η`.**  The witness of the infinity axiom in `L η` has no ∈-maximal element, hence has
-elements of arbitrarily large finite rank, hence rank `≥ ω`; and its rank is `< η`. -/
+/-- **`ω < η`.**  Every von Neumann natural belongs to the inductive set given by the infinity
+axiom, so that set has rank `≥ ω`; and its rank is `< η`. -/
 theorem omega_lt_of_kpTrue {η : Ordinal.{u}} (hpos : (0 : Ordinal.{u}) < η)
     (hall : KPSatL.{u} η) : Ordinal.omega0 < η := by
-  obtain ⟨x, hxL, ⟨u0, hu0⟩, hstep⟩ := infAx_content (empty_mem_L hpos) hall
-  have key : ∀ n : ℕ, ∃ u ∈ x, (n : Ordinal.{u}) ≤ u.rank := by
+  obtain ⟨x, hxL, hzero, hsucc⟩ := infAx_content (empty_mem_L hpos) hall
+  have hnat : ∀ n : ℕ, natZ.{u} n ∈ x := by
     intro n
     induction n with
-    | zero => exact ⟨u0, hu0, by simp⟩
-    | succ n ih =>
-      obtain ⟨u, hu, hun⟩ := ih
-      obtain ⟨z, hz, huz⟩ := hstep u hu
-      refine ⟨z, hz, ?_⟩
-      have hlt : u.rank < z.rank := ZFSet.rank_lt_of_mem huz
-      have hle : ((n : Ordinal.{u}) + 1) ≤ z.rank := Order.add_one_le_iff.mpr (hun.trans_lt hlt)
-      simpa [Nat.cast_succ] using hle
-  have hrank : ∀ n : ℕ, (n : Ordinal.{u}) ≤ x.rank := by
+    | zero => exact hzero
+    | succ n ih => exact hsucc _ ih
+  have hrk : ∀ n : ℕ, (n : Ordinal.{u}) ≤ (natZ.{u} n).rank := by
     intro n
-    obtain ⟨u, hu, hun⟩ := key n
-    exact hun.trans (ZFSet.rank_lt_of_mem hu).le
-  exact (Ordinal.omega0_le.mpr hrank).trans_lt (rank_lt_of_mem_L hxL)
+    induction n with
+    | zero => simp
+    | succ n ih =>
+      have hlt : (natZ.{u} n).rank < (natZ.{u} (n + 1)).rank :=
+        ZFSet.rank_lt_of_mem (natZ_mem_natZ_iff.mpr (Nat.lt_succ_self n))
+      simpa [Nat.cast_succ] using Order.add_one_le_iff.mpr (ih.trans_lt hlt)
+  have hle : ∀ n : ℕ, (n : Ordinal.{u}) ≤ x.rank := fun n =>
+    (hrk n).trans (ZFSet.rank_lt_of_mem (hnat n)).le
+  exact (Ordinal.omega0_le.mpr hle).trans_lt (rank_lt_of_mem_L hxL)
 
 /-- The pairing axiom, unpacked. -/
 theorem pairAx_content {η : Ordinal.{u}} (hemp : (∅ : ZFSet.{u}) ∈ L η) (hall : KPSatL.{u} η) :
@@ -230,7 +262,6 @@ theorem sepAx_content {η : Ordinal.{u}} (hemp : (∅ : ZFSet.{u}) ∈ L η) (ha
   have hcode : KPAxCode (L Ordinal.omega0) ωZ
       (Fm.code.{u} (Fm.alls (Fm.fv (sepAx φ 0 1 2 3)).toList (sepAx φ 0 1 2 3))) :=
     kpAxCode_sep hφ (notFree_of_vars_lt hvars (by omega))
-      (notFree_of_vars_lt hvars (by omega))
       (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
       _ (subset_toList_toFinset _)
   have h := sat_of_alls (D := (· ∈ L η)) (fun _ => hemp)
@@ -311,6 +342,40 @@ theorem isSuccLimit_of_kpTrue {η : Ordinal.{u}} (hpos : (0 : Ordinal.{u}) < η)
   exact hB2L
 
 
+/-! ### `IsAdmissible` is the paper's `L θ ⊨ KP` -/
+
+/-- **`L θ ⊨ KP`**: every axiom recognised by `KPAxCode` is true in `L θ`.  The axioms are
+sentences (`fv_eq_empty_of_kpAxCode`), so the assignment is irrelevant and the empty one is
+enough. -/
+def KPModel (θ : Ordinal.{u}) : Prop :=
+  ∀ φ : Fm, KPAxCode (L Ordinal.omega0) ωZ (Fm.code.{u} φ) → SatIn (L θ) (fun _ => ∅) φ
+
+/-- The paper defines admissibility of `θ` as `L θ ⊨ KP` (§10).  `IsAdmissible` states instead
+the three conditions `ω < θ`, `θ` a limit, and Δ₀-collection in `L θ`.  They agree: the other
+seven axioms hold in `L θ` for every limit `θ > ω` (`KPSat.lean`), and conversely `ω < θ` and
+the limit property follow from the truth of the axioms (`omega_lt_of_kpTrue`,
+`isSuccLimit_of_kpTrue`). -/
+theorem isAdmissible_iff_kpModel {θ : Ordinal.{u}} :
+    IsAdmissible θ ↔ KPModel.{u} θ := by
+  constructor
+  · intro h φ hc
+    exact satIn_kpAx h hc φ rfl (fun _ => ∅) (fun _ => empty_mem_L h.pos)
+  · intro hsent
+    have hpos : (0 : Ordinal.{u}) < θ := by
+      rcases eq_or_ne θ 0 with rfl | hne
+      · have hmem := hsent infAx kpAxCode_inf
+        simp only [infAx, SatIn] at hmem
+        obtain ⟨x, hxL, -⟩ := sat_ex.mp hmem
+        rw [L_zero] at hxL
+        exact absurd hxL (ZFSet.notMem_empty _)
+      · exact pos_iff_ne_zero.mpr hne
+    have hall : KPSatL.{u} θ := by
+      intro φ hc v hv
+      have hfv : Fm.fv φ = ∅ := fv_eq_empty_of_kpAxCode hc rfl
+      exact (sat_congr (fun k hk => absurd (hfv ▸ hk) (Finset.notMem_empty k))).mp (hsent φ hc)
+    exact isAdmissible_of_kpTrue (omega_lt_of_kpTrue hpos hall)
+      (isSuccLimit_of_kpTrue hpos hall) hall
+
 /-! ### Lemma 11.2: correctness inside an admissible `L θ` -/
 
 /-- **Lemma 11.2**: `AdmKP` is correct inside an admissible `L θ`. -/
@@ -332,7 +397,7 @@ theorem admKP_iff {θ η : Ordinal.{u}} (hθ : IsAdmissible θ) (hη : η < θ) 
       have hcov : ∀ k ∈ Fm.fv φ, InDomZ (∅ : ZFSet.{u}) (natZ k) :=
         fun k hk => absurd (hfv ▸ hk) (Finset.notMem_empty k)
       have hmem := hkp (Fm.code.{u} φ) (Fm.code_mem_Lω φ) hc
-      rw [satCode_correct hsat φ ∅ h0seq hcov h0U] at hmem
+      rw [satCode_correct hsat φ ∅ h0seq hcov] at hmem
       exact hmem
     have hpos : (0 : Ordinal.{u}) < η := by
       rcases eq_or_ne η 0 with rfl | hne
@@ -365,7 +430,7 @@ theorem admKP_iff {θ η : Ordinal.{u}} (hθ : IsAdmissible θ) (hη : η < θ) 
     have hfv : Fm.fv φ = ∅ := fv_eq_empty_of_kpAxCode hdcode rfl
     have hcov : ∀ k ∈ Fm.fv φ, InDomZ (∅ : ZFSet.{u}) (natZ k) :=
       fun k hk => absurd (hfv ▸ hk) (Finset.notMem_empty k)
-    rw [satCode_correct hsat φ ∅ h0seq hcov h0U]
+    rw [satCode_correct hsat φ ∅ h0seq hcov]
     exact satIn_kpAx hadm hdcode φ rfl (SeqVal ∅) (fun n => seqVal_mem h0seq hemp n)
 
 end BM4.ST

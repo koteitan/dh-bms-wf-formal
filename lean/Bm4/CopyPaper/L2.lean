@@ -47,8 +47,8 @@ private theorem anc_ancEq {B : Arr r} {k x y z : ℕ} (h₁ : anc B k x y) (h₂
 
 /-- Lemma 6.2 in the form used below: if every direct `k`-parent of `t` is left of `lo`, then
 `t` has no internal valid `k`-candidate at all. -/
-theorem no_intECand_of_parent_lt {B : Arr r} {k lo t : ℕ}
-    (h : ∀ y, parent B k y t → y < lo) : ∀ z, ¬ IntECand B lo k z t := by
+theorem no_intECand_of_parent_lt {B : Arr r} {k lo hi t : ℕ}
+    (h : ∀ y, parent B k y t → y < lo) : ∀ z, ¬ IntECand B lo hi k z t := by
   intro z hz
   obtain ⟨y, hy, hyge⟩ := exists_parent_of_intECand hz
   exact absurd (h y hy) (not_lt.mpr hyge)
@@ -64,16 +64,16 @@ reaches every later leading column. -/
 
 /-- For `k < m₀` and `q > 0`, the bad root is a `k`-ancestor of the leading column of `Bq`. -/
 theorem lead_chain_from_p {k : ℕ} (hk : k < b.m) (h3 : b.Claim3 k) :
-    ∀ q, 0 < q → anc b.tA k b.p (b.pos q 0) := by
+    ∀ q, q ≤ b.N → 0 < q → anc b.tA k b.p (b.pos q 0) := by
   intro q
   induction q with
-  | zero => intro h; omega
+  | zero => intro _ h; omega
   | succ q' ih =>
-    intro _
-    have hstep : anc b.tA k (b.pos q' 0) (b.pos (q' + 1) 0) := b.lead_bridge hk h3 q'
+    intro hqN _
+    have hstep : anc b.tA k (b.pos q' 0) (b.pos (q' + 1) 0) := b.lead_bridge hk h3 hqN
     rcases Nat.eq_zero_or_pos q' with rfl | hq'
     · rw [b.pos_zero_zero] at hstep; exact hstep
-    · exact anc_trans (ih hq') hstep
+    · exact anc_trans (ih (by omega) hq') hstep
 
 /-! ### Case 1: the target column ascends -/
 
@@ -81,15 +81,15 @@ theorem lead_chain_from_p {k : ℕ} (hk : k < b.m) (h3 : b.Claim3 k) :
 make `P` a `k`-ancestor of `D_j⁽ᑫ⁾`, and `P ≼ₖ D_j` in `A`.  Both sides then factor through
 `P`, and the piece below `p` lives in the common prefix. -/
 theorem claim2_asc {k q j E : ℕ} (h1 : b.Claim1 k) (h3 : k < b.m → b.Claim3 k)
-    (hq : 0 < q) (hj : j < b.s) (hE : E < b.p) (hasc : b.Asc k j) :
+    (hqN : q ≤ b.N) (hq : 0 < q) (hj : j < b.s) (hE : E < b.p) (hasc : b.Asc k j) :
     anc b.tA k E (b.pos q j) ↔ anc A k E (b.p + j) := by
   have hk : k < b.m := hasc.1
-  have hlead : anc b.tA k b.p (b.pos q 0) := b.lead_chain_from_p hk (h3 hk) q hq
+  have hlead : anc b.tA k b.p (b.pos q 0) := b.lead_chain_from_p hk (h3 hk) q hqN hq
   have htail : ancEq b.tA k (b.pos q 0) (b.pos q j) := by
     rcases hasc.2 with heq | hanc
     · have hj0 : j = 0 := by omega
       subst hj0; exact ancEq_refl _ _ _
-    · exact Or.inr ((h1 q 0 j b.s_pos hj).mpr (by simpa using hanc))
+    · exact Or.inr ((h1 q hqN 0 j b.s_pos hj).mpr (by simpa using hanc))
   have hbp : anc b.tA k b.p (b.pos q j) := anc_ancEq hlead htail
   constructor
   · intro h
@@ -110,8 +110,8 @@ theorem claim2_asc {k q j E : ℕ} (h1 : b.Claim1 k) (h3 : k < b.m → b.Claim3 
 
 /-- Step 6: the structural `k`-candidates of `R⁽ᑫ⁾` and of `R` seen from `G` agree.
 For `k = 0` both sides just say `E < ·`; for `k = h+1` this is `Claim2 h`. -/
-theorem cand_agree {k q i E : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (hi : i < b.s)
-    (hE : E < b.p) : cand b.tA k E (b.pos q i) ↔ cand A k E (b.p + i) := by
+theorem cand_agree {k q i E : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (hqN : q ≤ b.N)
+    (hi : i < b.s) (hE : E < b.p) : cand b.tA k E (b.pos q i) ↔ cand A k E (b.p + i) := by
   cases k with
   | zero =>
     simp only [cand_zero]
@@ -119,58 +119,64 @@ theorem cand_agree {k q i E : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (hi : i
     omega
   | succ h =>
     have h2 : b.Claim2 h := h2low h (Nat.lt_succ_self h)
-    exact h2 q i E hi hE
+    exact h2 q hqN i E hi hE
 
 /-- Step 7: with no internal valid candidate on either side, the direct `k`-parents of `R⁽ᑫ⁾`
 and of `R` inside `G` are the same.  The `<`-component is free, the candidate component is
 step 6, the value component is (6.15) together with `col_lt`, and maximality is settled below
 `p` by step 6 and at or above `p` by the absence of internal candidates. -/
-theorem parent_agree {k q i y : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (hi : i < b.s)
-    (hnasc : ¬ b.Asc k i)
-    (hnoT : ∀ z, ¬ IntECand b.tA b.p k z (b.pos q i))
-    (hnoA : ∀ z, ¬ IntECand A b.p k z (b.p + i))
+theorem parent_agree {k q i y : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (hqN : q ≤ b.N)
+    (hi : i < b.s) (hnasc : ¬ b.Asc k i)
+    (hnoT : ∀ z, ¬ IntECand b.tA b.p (b.pos q i + 1) k z (b.pos q i))
+    (hnoA : ∀ z, ¬ IntECand A b.p (b.p + i + 1) k z (b.p + i))
     (hy : y < b.p) :
     parent b.tA k y (b.pos q i) ↔ parent A k y (b.p + i) := by
   have hcolT : b.tA.col (b.pos q i) k = A.col (b.p + i) k := b.col_pos_not_asc hi hnasc
   have hcoly : b.tA.col y k = A.col y k := b.col_lt hy
   have hple : b.p ≤ b.pos q i := b.p_le_pos q i
+  have hlenA : b.p + i < A.len := by have := b.lt_c_of_lt_s hi; omega
+  have hlenT : b.pos q i < b.tA.len := b.pos_lt_tA_len hqN hi
   constructor
-  · rintro ⟨-, hc, hv, hmax⟩
-    refine ⟨by omega, (b.cand_agree h2low hi hy).mp hc, by rw [← hcolT, ← hcoly]; exact hv, ?_⟩
+  · rintro ⟨-, hc, hv, hmax, hkr, -⟩
+    refine ⟨by omega, (b.cand_agree h2low hqN hi hy).mp hc,
+      by rw [← hcolT, ← hcoly]; exact hv, ?_, hkr, hlenA⟩
     intro z hz1 hz2 hz3
     rcases lt_or_ge z b.p with hzp | hzp
-    · have hcz : cand b.tA k z (b.pos q i) := (b.cand_agree h2low hi hzp).mpr hz3
+    · have hcz : cand b.tA k z (b.pos q i) := (b.cand_agree h2low hqN hi hzp).mpr hz3
       have hmx := hmax z hz1 (by omega) hcz
       rw [hcolT, b.col_lt hzp] at hmx
       exact hmx
-    · exact not_lt.mp (fun hcc => hnoA z ⟨hzp, hz3, hcc⟩)
-  · rintro ⟨-, hc, hv, hmax⟩
-    refine ⟨by omega, (b.cand_agree h2low hi hy).mpr hc, by rw [hcolT, hcoly]; exact hv, ?_⟩
+    · exact not_lt.mp (fun hcc => hnoA z ⟨hzp, Nat.lt_succ_of_lt (cand_lt hz3), hz3, hcc, hkr, hlenA⟩)
+  · rintro ⟨-, hc, hv, hmax, hkr, -⟩
+    refine ⟨by omega, (b.cand_agree h2low hqN hi hy).mpr hc,
+      by rw [hcolT, hcoly]; exact hv, ?_, hkr, hlenT⟩
     intro z hz1 hz2 hz3
     rcases lt_or_ge z b.p with hzp | hzp
-    · have hcz : cand A k z (b.p + i) := (b.cand_agree h2low hi hzp).mp hz3
+    · have hcz : cand A k z (b.p + i) := (b.cand_agree h2low hqN hi hzp).mp hz3
       have hmx := hmax z hz1 (by omega) hcz
       rw [hcolT, b.col_lt hzp]
       exact hmx
-    · exact not_lt.mp (fun hcc => hnoT z ⟨hzp, hz3, hcc⟩)
+    · exact not_lt.mp (fun hcc => hnoT z ⟨hzp, Nat.lt_succ_of_lt (cand_lt hz3), hz3, hcc, hkr, hlenT⟩)
 
 /-- Step 9: ancestry from `G` into `R⁽ᑫ⁾` and into `R` agree.  Split off the last step of the
 chain (`anc_last_step`): its direct parent lies in `G` and moves across by step 7, while the
 remaining chain lives in the common prefix and moves across by Lemma 3.1.  (The paper's side
 condition `E < p` is not needed here: the last step already forces the whole chain into `G`.) -/
-theorem anc_transfer_root {k q i : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (hi : i < b.s)
-    (hnasc : ¬ b.Asc k i)
+theorem anc_transfer_root {k q i : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (hqN : q ≤ b.N)
+    (hi : i < b.s) (hnasc : ¬ b.Asc k i)
     (hminT : ∀ y, parent b.tA k y (b.pos q i) → y < b.p)
     (hminA : ∀ y, parent A k y (b.p + i) → y < b.p) (E : ℕ) :
     anc b.tA k E (b.pos q i) ↔ anc A k E (b.p + i) := by
-  have hnoT := no_intECand_of_parent_lt hminT
-  have hnoA := no_intECand_of_parent_lt hminA
+  have hnoT : ∀ z, ¬ IntECand b.tA b.p (b.pos q i + 1) k z (b.pos q i) :=
+    no_intECand_of_parent_lt hminT
+  have hnoA : ∀ z, ¬ IntECand A b.p (b.p + i + 1) k z (b.p + i) :=
+    no_intECand_of_parent_lt hminA
   constructor
   · intro h
     obtain ⟨u, hu, hup⟩ := anc_last_step h
     have hul : u < b.p := hminT u hup
     have hpA : parent A k u (b.p + i) :=
-      (b.parent_agree h2low hi hnasc hnoT hnoA hul).mp hup
+      (b.parent_agree h2low hqN hi hnasc hnoT hnoA hul).mp hup
     rcases hu with rfl | hu
     · exact anc_of_parent hpA
     · exact anc_of_anc_of_parent ((b.anc_tA_prefix (hul.trans b.p_lt_c) k E).mp hu) hpA
@@ -178,7 +184,7 @@ theorem anc_transfer_root {k q i : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (h
     obtain ⟨u, hu, hup⟩ := anc_last_step h
     have hul : u < b.p := hminA u hup
     have hpT : parent b.tA k u (b.pos q i) :=
-      (b.parent_agree h2low hi hnasc hnoT hnoA hul).mpr hup
+      (b.parent_agree h2low hqN hi hnasc hnoT hnoA hul).mpr hup
     rcases hu with rfl | hu
     · exact anc_of_parent hpT
     · exact anc_of_anc_of_parent ((b.anc_tA_prefix (hul.trans b.p_lt_c) k E).mpr hu) hpT
@@ -189,7 +195,7 @@ theorem anc_transfer_root {k q i : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (h
 `D_{i₀} ≼ₖ D_j` in `A`; minimality puts every `k`-parent of `R` and of `R⁽ᑫ⁾` into `G`, and
 `Claim1 k` collapses `D_j` to `R` on both sides. -/
 theorem claim2_not_asc {k q j E : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (h1 : b.Claim1 k)
-    (h5 : b.Claim5 k) (h4 : b.m ≤ k → b.Claim4) (hq : 0 < q)
+    (h5 : b.Claim5 k) (h4 : b.m ≤ k → b.Claim4) (hqN : q ≤ b.N) (hq : 0 < q)
     (hj : j < b.s) (hE : E < b.p) (hnasc : ¬ b.Asc k j) :
     anc b.tA k E (b.pos q j) ↔ anc A k E (b.p + j) := by
   have hex : ∃ i, i < b.s ∧ ancEq A k (b.p + i) (b.p + j) := ⟨j, hj, ancEq_refl _ _ _⟩
@@ -223,13 +229,13 @@ theorem claim2_not_asc {k q j E : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (h1
       · exfalso
         have hii : i < i₀ := b.pos_lt_pos_same_iff.mp (parent_lt hp)
         have hiA : anc A k (b.p + i) (b.p + i₀) :=
-          (h1 q i i₀ (by omega) hi₀s).mp (anc_of_parent hp)
+          (h1 q hqN i i₀ (by omega) hi₀s).mp (anc_of_parent hp)
         exact hmin i hii ⟨by omega, ancEq_trans (Or.inr hiA) hi₀eq⟩
   -- 8. collapse `D_j` to `R` on both sides
   have hTeq : ancEq b.tA k (b.pos q i₀) (b.pos q j) := by
     rcases eq_or_lt_of_le hi₀j with heq | hlt
     · rw [heq]; exact ancEq_refl _ _ _
-    · exact Or.inr ((h1 q i₀ j hi₀s hj).mpr (anc_of_ancEq_of_ne hi₀eq (by omega)))
+    · exact Or.inr ((h1 q hqN i₀ j hi₀s hj).mpr (anc_of_ancEq_of_ne hi₀eq (by omega)))
   have hcollT : anc b.tA k E (b.pos q j) ↔ anc b.tA k E (b.pos q i₀) := by
     constructor
     · intro h
@@ -246,21 +252,21 @@ theorem claim2_not_asc {k q j E : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (h1
     · intro h; exact anc_ancEq h hi₀eq
   -- 9. transfer at `R`
   rw [hcollT, hcollA]
-  exact b.anc_transfer_root h2low hi₀s hnasc0 hminT hminA E
+  exact b.anc_transfer_root h2low hqN hi₀s hnasc0 hminT hminA E
 
 /-! ### Lemma 6.7 -/
 
 /-- **Lemma 6.7** (local proof II): the second claim of Theorem 6.3 for row `k`. -/
 theorem lemma_6_7 {k : ℕ} (h2low : ∀ h, h < k → b.Claim2 h) (h1 : b.Claim1 k) (h5 : b.Claim5 k)
     (h34 : (k < b.m → b.Claim3 k) ∧ (b.m ≤ k → b.Claim4)) : b.Claim2 k := by
-  intro q j E hj hE
+  intro q hqN j E hj hE
   rcases Nat.eq_zero_or_pos q with rfl | hq
   · -- the first copy is part of the common prefix (Lemma 3.1)
     rw [b.pos_zero]
     exact b.anc_tA_prefix (b.lt_c_of_lt_s hj) k E
   by_cases hasc : b.Asc k j
-  · exact b.claim2_asc h1 h34.1 hq hj hE hasc
-  · exact b.claim2_not_asc h2low h1 h5 h34.2 hq hj hE hasc
+  · exact b.claim2_asc h1 h34.1 hqN hq hj hE hasc
+  · exact b.claim2_not_asc h2low h1 h5 h34.2 hqN hq hj hE hasc
 
 end BadRoot
 

@@ -13,6 +13,54 @@ namespace BM4.ST
 
 open Fm
 
+/-! ### Padding of an assignment
+
+Definition 13.2's matrix compares an assignment with its `∅`-padding.  This has no counterpart
+in §8 — the "padding" listed there is an operation on formula codes — so it is placed here,
+with the §12–13 preparation that uses it. -/
+
+/-- `b` is `a` padded with pairs `⟨k, ∅⟩`, i.e. with the default value at indices outside the
+domain of `a`. -/
+def IsPadOf (a b : ZFSet.{u}) : Prop :=
+  a ⊆ b ∧ ∀ p ∈ b, p ∈ a ∨ ∃ k, p = ZFSet.pair k ∅
+
+/-- Padding with `∅` does not change the values of a sequence. -/
+theorem seqVal_of_isPadOf {a b : ZFSet.{u}} (hfa : IsFunc a) (hfb : IsFunc b)
+    (h : IsPadOf a b) : SeqVal b = SeqVal a := by
+  funext k
+  by_cases hex : ∃ y, ZFSet.pair (natZ k) y ∈ a
+  · obtain ⟨y, hy⟩ := hex
+    rw [seqVal_spec hfa hy, seqVal_spec hfb (h.1 hy)]
+  · push Not at hex
+    rw [seqVal_of_notMem hex]
+    by_cases hexb : ∃ z, ZFSet.pair (natZ k) z ∈ b
+    · obtain ⟨z, hz⟩ := hexb
+      rw [seqVal_spec hfb hz]
+      rcases h.2 _ hz with h1 | ⟨k', h1⟩
+      · exact absurd h1 (hex z)
+      · rw [ZFSet.pair_inj] at h1
+        exact h1.2
+    · push Not at hexb
+      exact seqVal_of_notMem hexb
+
+/-- `IsPadOf a b` is Δ0. -/
+theorem delta0_isPadOf (a b : ℕ) (hab : a ≠ b) :
+    Delta0Def {a, b} (fun _ v => IsPadOf (v a) (v b)) := by
+  set m := a + b + 1 with hm
+  have h1 := delta0_subset a b hab
+  have i1 := (delta0_eqPairEmpty m (m + 2) (by omega)).bex (m + 2) (m + 1) (by omega)
+  have i2 := i1.bex (m + 1) m (by omega)
+  have h2 := ((Delta0Def.mem m a).or i2).ball m b (by omega)
+  refine ((h1.and h2).congr ?_).of_eq ?_
+  · intro D v _ _
+    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
+    unfold IsPadOf
+    refine and_congr Iff.rfl (forall_congr' fun p => imp_congr_right fun _ => ?_)
+    exact or_congr Iff.rfl (exists_pairEmpty_iff_bounded p).symm
+  · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
+      Finset.mem_union]; omega
+
+
 /-- Universal block quantification (the dual of `ExsD`). -/
 def AllD (D : ZFSet.{u} → Prop) : List ℕ → ((ℕ → ZFSet.{u}) → Prop) → (ℕ → ZFSet.{u}) → Prop
   | [], P, v => P v
@@ -42,32 +90,6 @@ theorem allD_congr {D : ZFSet.{u} → Prop} {P Q : (ℕ → ZFSet.{u}) → Prop}
     exact forall_congr' fun y => imp_congr_right fun _ => allD_congr h l _
 
 /-! ### Simultaneous updates along a block -/
-
-/-- `IsBlkUpd a ν t b`: `b` is the assignment `a` updated at the variables listed by the finite
-sequence `ν` with the corresponding values of the finite sequence `t`. Both `ν` and `t` are
-function-sets with the same domain, a natural number. -/
-def IsBlkUpd (a ν t b : ZFSet.{u}) : Prop :=
-  IsFunc ν ∧ IsFunc t ∧
-    (∀ m x, ZFSet.pair m x ∈ ν → ∃ y, ZFSet.pair m y ∈ t) ∧
-    (∀ m y, ZFSet.pair m y ∈ t → ∃ x, ZFSet.pair m x ∈ ν) ∧
-    ∀ p, p ∈ b ↔ (∃ k x, p = ZFSet.pair k x ∧
-      ((∃ m, ZFSet.pair m k ∈ ν ∧ ZFSet.pair m x ∈ t) ∨
-        (p ∈ a ∧ ∀ m k', ZFSet.pair m k' ∈ ν → k' ≠ k)))
-
-/-- Blocks whose variable list has no repetitions give a well-defined update. -/
-theorem isBlkUpd_unique {a ν t b b' : ZFSet.{u}} (h : IsBlkUpd a ν t b) (h' : IsBlkUpd a ν t b') :
-    b = b' := by
-  ext p
-  rw [h.2.2.2.2 p, h'.2.2.2.2 p]
-
-/-- The block update, applied to the finite list of variables `l` and values `xs`. -/
-theorem blkUpd_seqVal {a ν t b : ZFSet.{u}} (hb : IsBlkUpd a ν t b) {k : ℕ} {x : ZFSet.{u}}
-    (hx : ZFSet.pair (natZ k) x ∈ b) :
-    (∃ m, ZFSet.pair m (natZ.{u} k) ∈ ν ∧ ZFSet.pair m x ∈ t) ∨
-      (ZFSet.pair (natZ k) x ∈ a ∧ ∀ m k', ZFSet.pair m k' ∈ ν → k' ≠ natZ.{u} k) := by
-  obtain ⟨k', x', hp, hcase⟩ := (hb.2.2.2.2 _).mp hx
-  obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective hp
-  exact hcase
 
 /-! ### Successive updates along a list of variables -/
 
@@ -225,15 +247,6 @@ theorem isFunc_seqOfNats (l : List ℕ) : IsFunc (seqOfNats.{u} l) := by
 
 /-! ### Existence and semantics of the block update -/
 
-/-- The two cases of a member of a block update, for an explicit pair. -/
-theorem blkUpd_cases {a ν t b : ZFSet.{u}} (hb : IsBlkUpd a ν t b) {k x : ZFSet.{u}}
-    (hx : ZFSet.pair k x ∈ b) :
-    (∃ m, ZFSet.pair m k ∈ ν ∧ ZFSet.pair m x ∈ t) ∨
-      (ZFSet.pair k x ∈ a ∧ ∀ m k', ZFSet.pair m k' ∈ ν → k' ≠ k) := by
-  obtain ⟨k', x', hp, hcase⟩ := (hb.2.2.2.2 _).mp hx
-  obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective hp
-  exact hcase
-
 /-- A list without repetitions gives an injective sequence of variables. -/
 theorem seqOfNats_index_inj {l : List ℕ} (hnd : l.Nodup) {m m' k : ZFSet.{u}}
     (h : ZFSet.pair m k ∈ seqOfNats.{u} l) (h' : ZFSet.pair m' k ∈ seqOfNats.{u} l) : m = m' := by
@@ -256,129 +269,6 @@ theorem seqOfNats_val {l : List ℕ} {m c : ZFSet.{u}} (h : ZFSet.pair m c ∈ s
   rw [ZFSet.pair_inj] at e
   obtain ⟨hn, hg⟩ := List.getElem?_eq_some_iff.mp hni
   exact ⟨i, List.mem_iff_getElem.mpr ⟨n, hn, hg⟩, e.2⟩
-
-theorem isFunc_of_isBlkUpd {a b : ZFSet.{u}} (hfa : IsFunc a) {l : List ℕ} (hnd : l.Nodup)
-    {xs : List ZFSet.{u}} (hb : IsBlkUpd a (seqOfNats.{u} l) (seqOfVals xs) b) : IsFunc b := by
-  refine ⟨fun p hp => ?_, fun c y y' hy hy' => ?_⟩
-  · obtain ⟨k, x, rfl, _⟩ := (hb.2.2.2.2 p).mp hp
-    exact ⟨_, _, rfl⟩
-  · rcases blkUpd_cases hb hy with ⟨m, hm1, hm2⟩ | ⟨ha1, ha2⟩ <;>
-      rcases blkUpd_cases hb hy' with ⟨m', hm1', hm2'⟩ | ⟨ha1', ha2'⟩
-    · have hmm : m = m' := seqOfNats_index_inj hnd hm1 hm1'
-      subst hmm
-      exact (isFunc_seqOfVals xs).2 _ _ _ hm2 hm2'
-    · exact absurd rfl (ha2' m c hm1)
-    · exact absurd rfl (ha2 m' c hm1')
-    · exact hfa.2 _ _ _ ha1 ha1'
-
-/-- Conversely, any block update by sequences coming from lists has the same semantics. -/
-theorem seqVal_of_isBlkUpd {A a b : ZFSet.{u}} (ha : IsSeqA ωZ A a)
-    {l : List ℕ} (hnd : l.Nodup) {xs : List ZFSet.{u}} (hlen : xs.length = l.length)
-    (hb : IsBlkUpd a (seqOfNats.{u} l) (seqOfVals xs) b) :
-    SeqVal b = updList (SeqVal a) l xs := by
-  have hfb := isFunc_of_isBlkUpd ha.1 hnd hb
-  funext k
-  by_cases hk : k ∈ l
-  · obtain ⟨j, hj, rfl⟩ := List.mem_iff_getElem.mp hk
-    have hjx : j < xs.length := lt_of_lt_of_eq hj hlen.symm
-    have hν : ZFSet.pair (natZ.{u} j) (natZ.{u} l[j]) ∈ seqOfNats.{u} l :=
-      mem_seqOfNats.mpr (List.getElem?_eq_getElem hj)
-    have ht : ZFSet.pair (natZ.{u} j) (xs[j]'hjx) ∈ seqOfVals xs := mem_seqOfVals hjx
-    have hmem : ZFSet.pair (natZ.{u} l[j]) (xs[j]'hjx) ∈ b :=
-      (hb.2.2.2.2 _).mpr ⟨_, _, rfl, Or.inl ⟨_, hν, ht⟩⟩
-    rw [seqVal_spec hfb hmem, updList_getElem hnd hlen _ hj]
-  · have hnot : ∀ m k', ZFSet.pair m k' ∈ seqOfNats.{u} l → k' ≠ natZ.{u} k := by
-      intro m k' hmk' hcon
-      obtain ⟨i, hi, rfl⟩ := seqOfNats_val hmk'
-      exact hk (natZ_injective hcon ▸ hi)
-    have hiff : ∀ y, ZFSet.pair (natZ.{u} k) y ∈ b ↔ ZFSet.pair (natZ.{u} k) y ∈ a := by
-      intro y
-      constructor
-      · intro h
-        rcases blkUpd_cases hb h with ⟨m, hm1, _⟩ | ⟨h1, _⟩
-        · exact absurd rfl (hnot m _ hm1)
-        · exact h1
-      · intro h
-        exact (hb.2.2.2.2 _).mpr ⟨_, _, rfl, Or.inr ⟨h, hnot⟩⟩
-    rw [updList_apply_of_notMem l xs _ k hk]
-    by_cases hex : ∃ y, ZFSet.pair (natZ.{u} k) y ∈ a
-    · obtain ⟨y, hy⟩ := hex
-      rw [seqVal_spec ha.1 hy, seqVal_spec hfb ((hiff y).mpr hy)]
-    · push Not at hex
-      rw [seqVal_of_notMem hex, seqVal_of_notMem (fun y hy => hex y ((hiff y).mp hy))]
-
-/-- A superset of the intended block update, used to build it by separation. -/
-noncomputable def blkUpdSet (a ν t : ZFSet.{u}) : ZFSet.{u} :=
-  ZFSet.sep
-    (fun p => ∃ k x, p = ZFSet.pair k x ∧
-      ((∃ m, ZFSet.pair m k ∈ ν ∧ ZFSet.pair m x ∈ t) ∨
-        (p ∈ a ∧ ∀ m k', ZFSet.pair m k' ∈ ν → k' ≠ k)))
-    (a ∪ ZFSet.pairSep (fun _ _ => True) (ZFSet.sUnion (ZFSet.sUnion ν))
-      (ZFSet.sUnion (ZFSet.sUnion t)))
-
-theorem isBlkUpd_blkUpdSet {a ν t : ZFSet.{u}} (hν : IsFunc ν) (ht : IsFunc t)
-    (h3 : ∀ m x, ZFSet.pair m x ∈ ν → ∃ y, ZFSet.pair m y ∈ t)
-    (h4 : ∀ m y, ZFSet.pair m y ∈ t → ∃ x, ZFSet.pair m x ∈ ν) :
-    IsBlkUpd a ν t (blkUpdSet a ν t) := by
-  refine ⟨hν, ht, h3, h4, fun p => ?_⟩
-  rw [blkUpdSet, ZFSet.mem_sep]
-  refine ⟨fun h => h.2, fun h => ⟨?_, h⟩⟩
-  obtain ⟨k, x, rfl, hcase⟩ := h
-  rcases hcase with ⟨m, hm1, hm2⟩ | ⟨hpa, -⟩
-  · refine ZFSet.mem_union.mpr (Or.inr (ZFSet.mem_pairSep.mpr ⟨k, ?_, x, ?_, rfl, trivial⟩))
-    · exact ZFSet.mem_sUnion.mpr ⟨_, ZFSet.mem_sUnion.mpr ⟨_, hm1, upair_mem_pair m k⟩,
-        mem_upair_right m k⟩
-    · exact ZFSet.mem_sUnion.mpr ⟨_, ZFSet.mem_sUnion.mpr ⟨_, hm2, upair_mem_pair m x⟩,
-        mem_upair_right m x⟩
-  · exact ZFSet.mem_union.mpr (Or.inl hpa)
-
-/-- Existence and semantics of the block update. The block variables are required to be in the
-domain of `a`, so that the update is again a finite sequence (see `exists_blkUpd'`). -/
-theorem exists_blkUpd {A a : ZFSet.{u}} (ha : IsSeqA ωZ A a)
-    (l : List ℕ) (hnd : l.Nodup) (hdom : ∀ i ∈ l, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a)
-    (xs : List ZFSet.{u}) (hlen : xs.length = l.length) (hxs : ∀ x ∈ xs, x ∈ A) :
-    ∃ b, IsBlkUpd a (seqOfNats.{u} l) (seqOfVals xs) b ∧ IsSeqA ωZ A b ∧
-      SeqVal b = updList (SeqVal a) l xs := by
-  have h3 : ∀ m x, ZFSet.pair m x ∈ seqOfNats.{u} l → ∃ y, ZFSet.pair m y ∈ seqOfVals xs := by
-    intro m x hmx
-    obtain ⟨n, i, hni, e⟩ := mem_seqOfNats_iff.mp hmx
-    rw [ZFSet.pair_inj] at e
-    obtain ⟨rfl, rfl⟩ := e
-    have hn : n < l.length := (List.getElem?_eq_some_iff.mp hni).1
-    exact ⟨_, mem_seqOfVals (lt_of_lt_of_eq hn hlen.symm)⟩
-  have h4 : ∀ m y, ZFSet.pair m y ∈ seqOfVals xs → ∃ x, ZFSet.pair m x ∈ seqOfNats.{u} l := by
-    intro m y hmy
-    obtain ⟨n, hn, e⟩ := mem_seqOfVals_iff.mp hmy
-    rw [ZFSet.pair_inj] at e
-    obtain ⟨rfl, rfl⟩ := e
-    have hn' : n < l.length := lt_of_lt_of_eq hn hlen
-    exact ⟨natZ (l[n]'hn'), mem_seqOfNats.mpr (List.getElem?_eq_getElem hn')⟩
-  have hbu := isBlkUpd_blkUpdSet (a := a) (isFunc_seqOfNats.{u} l) (isFunc_seqOfVals xs) h3 h4
-  refine ⟨_, hbu, ⟨isFunc_of_isBlkUpd ha.1 hnd hbu, ?_, ?_⟩, seqVal_of_isBlkUpd ha hnd hlen hbu⟩
-  · obtain ⟨n₀, hdom₀⟩ := isSeqA_dom ha
-    refine ⟨natZ n₀, natZ_mem_ωZ n₀, fun c => ?_⟩
-    rw [hdom₀ c]
-    constructor
-    · rintro ⟨y, hy⟩
-      by_cases hc : ∃ m, ZFSet.pair m c ∈ seqOfNats.{u} l
-      · obtain ⟨m, hm⟩ := hc
-        obtain ⟨z, hz⟩ := h3 m c hm
-        exact ⟨z, (hbu.2.2.2.2 _).mpr ⟨_, _, rfl, Or.inl ⟨m, hm, hz⟩⟩⟩
-      · push Not at hc
-        refine ⟨y, (hbu.2.2.2.2 _).mpr ⟨_, _, rfl, Or.inr ⟨hy, fun m k' hmk' hkc => ?_⟩⟩⟩
-        exact hc m (hkc ▸ hmk')
-    · rintro ⟨y, hy⟩
-      rcases blkUpd_cases hbu hy with ⟨m, hm1, -⟩ | ⟨h1, -⟩
-      · obtain ⟨i, hi, rfl⟩ := seqOfNats_val hm1
-        exact hdom i hi
-      · exact ⟨y, h1⟩
-  · intro c x hcx
-    rcases blkUpd_cases hbu hcx with ⟨m, -, hm2⟩ | ⟨h1, -⟩
-    · obtain ⟨n, hn, e⟩ := mem_seqOfVals_iff.mp hm2
-      rw [ZFSet.pair_inj] at e
-      rw [e.2]
-      exact hxs _ (List.mem_iff_getElem.mpr ⟨n, hn, rfl⟩)
-    · exact ha.2.2 _ _ h1
 
 /-- Any finite sequence can be padded with `∅` (the value of an index outside the domain),
 without changing its values, so that its domain covers the first `n` variables. -/
@@ -435,20 +325,6 @@ theorem exists_padSeq {A a : ZFSet.{u}} (ha : IsSeqA ωZ A a) (hemp : ∅ ∈ A)
       · push Not at hia
         exact ⟨∅, (hb _).mpr (Or.inr (Or.inr
           ⟨natZ i, mem_natZ_iff.mpr ⟨i, by omega, rfl⟩, hia, rfl⟩))⟩
-
-/-- The block update of an arbitrary finite sequence: after padding `a` to a sequence `a'` with
-the same values, the block update exists and is again a finite sequence. -/
-theorem exists_blkUpd' {A a : ZFSet.{u}} (hemp : ∅ ∈ A) (ha : IsSeqA ωZ A a)
-    (l : List ℕ) (hnd : l.Nodup) (xs : List ZFSet.{u}) (hlen : xs.length = l.length)
-    (hxs : ∀ x ∈ xs, x ∈ A) :
-    ∃ a' b, IsSeqA ωZ A a' ∧ SeqVal a' = SeqVal a ∧
-      IsBlkUpd a' (seqOfNats.{u} l) (seqOfVals xs) b ∧ IsSeqA ωZ A b ∧
-      SeqVal b = updList (SeqVal a) l xs := by
-  obtain ⟨a', ha', -, hval, hdom⟩ := exists_padSeq ha hemp (l.sum + 1)
-  obtain ⟨b, hb, hbseq, hbval⟩ :=
-    exists_blkUpd ha' l hnd
-      (fun i hi => hdom i (by have := List.le_sum_of_mem hi; omega)) xs hlen hxs
-  exact ⟨a', b, ha', hval, hb, hbseq, by rw [hbval, hval]⟩
 
 /-! ### Δ₀-definability of the block update -/
 
@@ -626,37 +502,5 @@ theorem delta0_blkMem (a nu t b : ℕ) (han : a ≠ nu) (hat : a ≠ t) (hab : a
         exact hnot m k' hp2
   · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
       Finset.mem_union]; omega
-
-/-- Δ₀-definability of the block update. -/
-theorem delta0_isBlkUpd (a nu t b : ℕ) (han : a ≠ nu) (hat : a ≠ t) (hab : a ≠ b)
-    (hnt : nu ≠ t) (hnb : nu ≠ b) (htb : t ≠ b) :
-    Delta0Def {a, nu, t, b} (fun _ v => IsBlkUpd (v a) (v nu) (v t) (v b)) := by
-  have h1 := delta0_isFunc nu
-  have h2 := delta0_isFunc t
-  have h3 := delta0_domSub nu t hnt
-  have h4 := delta0_domSub t nu hnt.symm
-  have h5 := delta0_blkMem a nu t b han hat hab hnt hnb htb
-  have h6 := delta0_blkMemA a nu b han hab hnb
-  have h7 := delta0_blkMemNu nu t b hnt hnb htb
-  refine ((((h1.and h2).and (h3.and h4)).and ((h5.and h6).and h7)).congr ?_).of_eq ?_
-  · intro D v _ _
-    unfold IsBlkUpd
-    constructor
-    · rintro ⟨⟨⟨hf1, hf2⟩, hc3, hc4⟩, ⟨hi, hiia⟩, hiib⟩
-      refine ⟨hf1, hf2, hc3, hc4, ?_⟩
-      intro p
-      refine ⟨hi p, ?_⟩
-      rintro ⟨k, x, rfl, hcase⟩
-      rcases hcase with ⟨m, hmk, hmx⟩ | ⟨hpa, hnot⟩
-      · exact hiib m k hmk x hmx
-      · exact hiia _ hpa ⟨k, x, rfl, hnot⟩
-    · rintro ⟨hf1, hf2, hc3, hc4, hall⟩
-      refine ⟨⟨⟨hf1, hf2⟩, hc3, hc4⟩, ⟨fun p hp => (hall p).mp hp, ?_⟩, ?_⟩
-      · intro p hpa hex
-        obtain ⟨k, x, hpx, hnot⟩ := hex
-        exact (hall p).mpr ⟨k, x, hpx, Or.inr ⟨hpa, hnot⟩⟩
-      · intro m k hmk x hmx
-        exact (hall _).mpr ⟨k, x, rfl, Or.inl ⟨m, hmk, hmx⟩⟩
-  · ext k; simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union]; omega
 
 end BM4.ST

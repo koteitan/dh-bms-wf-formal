@@ -29,6 +29,14 @@ theorem BM4.ST.R_wf_unconditional (r : ℕ) : WellFounded (BM4.R r)
 .
 ├── README.md                  このファイル
 ├── paper-corrections.md       論文への修正案（形式化して見つかったもの）
+├── diff/                      形式化差異（論文の命題ごとに原文・Lean・理由）
+│   ├── README.md              目次
+│   ├── rule.md                書き方のルール
+│   └── P-01.md 〜 P-14.md
+├── plan/
+│   ├── fidelity-audit.md      原文忠実性の監査結果（節ごとに独立監査）
+│   ├── fidelity-audit-fix.md  監査が挙げた U（迂回）74 件の修正作業の記録
+│   └── U2P.md                 U と論文中の命題の対応表
 ├── VERSION
 ├── lean/                      Lean 4 プロジェクト
 │   ├── README.md              形式化の詳細（ファイルと論文の対応表）
@@ -54,6 +62,12 @@ theorem BM4.ST.R_wf_unconditional (r : ℕ) : WellFounded (BM4.R r)
     ├── formalization-detours.md  こちらの都合で迂回した部分
     └── paper-copy-lemma.md    コピー補題を論文の道筋で証明した記録
 ```
+
+## 形式化差異
+
+原文どおりに書けなかった箇所は、論文の命題ごとに 1 ページを立てて記録している。
+各ページは原文の命題と証明、Lean での命題と証明、そして原文どおりに書けなかった理由を
+並べる。目次は [diff/README.md](diff/README.md)。
 
 `lean/Bm4/SetTheory/` が全体の約 77% を占める。集合論の道具（構成可能階層 L、許容順序数、
 Δ₀ 論理式のコード化、充足コード、交代ブロック真理述語、有限行反映）を一から作っている。

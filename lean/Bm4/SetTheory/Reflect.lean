@@ -466,4 +466,13 @@ theorem terminates_unconditional {r : ℕ} (A : BM4.Arr r) (hA : BM4.Reachable r
 theorem R_wf_unconditional (r : ℕ) : WellFounded (BM4.R r) :=
   BM4.R_wf bm4LabelSystem.{0} r
 
+/-- **Theorem 1.2** on BM4 itself (Definition 1.1), i.e. on the union over all row counts. -/
+theorem terminates_all_unconditional (A : BM4.Elts) (n : ℕ → ℕ) :
+    ∃ T, (BM4.seq A.2.1 n T).len = 0 :=
+  BM4.terminates_all bm4LabelSystem.{0} A n
+
+/-- **Proposition 22.1** on BM4 itself. -/
+theorem R'_wf_unconditional : WellFounded BM4.R' :=
+  BM4.R'_wf bm4LabelSystem.{0}
+
 end BM4.ST

@@ -84,7 +84,8 @@ theorem cand_zero {A : Arr r} {j i : ℕ} : cand A 0 j i ↔ j < i := Iff.rfl
 /-- Unfolding `parent`. -/
 theorem parent_iff {A : Arr r} {k j i : ℕ} :
     parent A k j i ↔ j < i ∧ cand A k j i ∧ A.col j k < A.col i k ∧
-      ∀ j', j < j' → j' < i → cand A k j' i → A.col i k ≤ A.col j' k := Iff.rfl
+      (∀ j', j < j' → j' < i → cand A k j' i → A.col i k ≤ A.col j' k) ∧
+      k < r ∧ i < A.len := Iff.rfl
 
 theorem parent_lt {A : Arr r} {k j i : ℕ} (h : parent A k j i) : j < i := h.1
 theorem parent_cand {A : Arr r} {k j i : ℕ} (h : parent A k j i) : cand A k j i := h.2.1
@@ -92,7 +93,13 @@ theorem parent_val_lt {A : Arr r} {k j i : ℕ} (h : parent A k j i) : A.col j k
   h.2.2.1
 theorem parent_max {A : Arr r} {k j i : ℕ} (h : parent A k j i) {j' : ℕ} (hj : j < j')
     (hi : j' < i) (hc : cand A k j' i) : A.col i k ≤ A.col j' k :=
-  h.2.2.2 j' hj hi hc
+  h.2.2.2.1 j' hj hi hc
+
+/-- Definition 2.1's side condition `k < r`. -/
+theorem parent_row_lt {A : Arr r} {k j i : ℕ} (h : parent A k j i) : k < r := h.2.2.2.2.1
+
+/-- Definition 2.1's side condition `i ∈ Pos(A)`. -/
+theorem parent_target_lt {A : Arr r} {k j i : ℕ} (h : parent A k j i) : i < A.len := h.2.2.2.2.2
 
 /-- A `(k+1)`-parent is a strict `k`-ancestor. -/
 theorem parent_succ_anc {A : Arr r} {k j i : ℕ} (h : parent A (k + 1) j i) : anc A k j i :=
@@ -128,9 +135,9 @@ the statement of 2.2 (3) itself is `ancEq_single_finite_chain` below. -/
 theorem parent_unique {A : Arr r} {k j j' i : ℕ} (h : parent A k j i) (h' : parent A k j' i) :
     j = j' := by
   rcases lt_trichotomy j j' with hlt | heq | hgt
-  · exact absurd h'.2.2.1 (not_lt.mpr (h.2.2.2 j' hlt h'.1 h'.2.1))
+  · exact absurd h'.2.2.1 (not_lt.mpr (h.2.2.2.1 j' hlt h'.1 h'.2.1))
   · exact heq
-  · exact absurd h.2.2.1 (not_lt.mpr (h'.2.2.2 j hgt h.1 h.2.1))
+  · exact absurd h.2.2.1 (not_lt.mpr (h'.2.2.2.1 j hgt h.1 h.2.1))
 
 /-- The last step of an ancestor chain. -/
 theorem anc_last_step {A : Arr r} {k j i : ℕ} (h : anc A k j i) :
@@ -196,8 +203,8 @@ theorem ancEq_single_finite_chain (A : Arr r) (k i : ℕ) :
     exact Set.mem_Iic.mpr (ancEq_le hu)
 
 /-- If some valid structural candidate exists, a parent exists. -/
-theorem exists_parent_of_valid {A : Arr r} {k j i : ℕ} (hc : cand A k j i)
-    (hv : A.col j k < A.col i k) : ∃ p, parent A k p i := by
+theorem exists_parent_of_valid {A : Arr r} {k j i : ℕ} (hk : k < r) (hi : i < A.len)
+    (hc : cand A k j i) (hv : A.col j k < A.col i k) : ∃ p, parent A k p i := by
   classical
   let P : ℕ → Prop := fun j' => cand A k j' i ∧ A.col j' k < A.col i k
   have hj : j < i := cand_lt hc
@@ -208,7 +215,7 @@ theorem exists_parent_of_valid {A : Arr r} {k j i : ℕ} (hc : cand A k j i)
     · intro p' hp'
       exact Nat.le_findGreatest (cand_lt hp'.1).le hp'
   obtain ⟨p, ⟨hpc, hpv⟩, hmax⟩ := hex
-  refine ⟨p, cand_lt hpc, hpc, hpv, ?_⟩
+  refine ⟨p, cand_lt hpc, hpc, hpv, ?_, hk, hi⟩
   intro j' hpj' _ hc'
   by_contra hlt
   push Not at hlt
@@ -216,85 +223,99 @@ theorem exists_parent_of_valid {A : Arr r} {k j i : ℕ} (hc : cand A k j i)
 
 /-! ### Prefix invariance (Lemma 3.1) -/
 
-/-- Two arrays agreeing on all positions `≤ i` have the same ancestors of `i`. -/
+/-- Two arrays agreeing on all positions `≤ i`, both having `i` as a position, have the same
+`k`-ancestors of `i`.  (Lemma 3.1 for two arrays; `anc_prefix` is the paper's statement.) -/
 theorem anc_congr {A B : Arr r} (k : ℕ) :
-    ∀ i j, anc A k j i → (∀ x ≤ i, ∀ k', A.col x k' = B.col x k') → anc B k j i := by
+    ∀ i j, anc A k j i → (∀ x ≤ i, ∀ k', A.col x k' = B.col x k') → i < B.len →
+      anc B k j i := by
   induction k generalizing A B with
   | zero =>
     intro i j h
     rw [anc_eq_transGen] at h ⊢
     induction h with
     | @single i hp =>
-      intro hag
-      refine .single ⟨hp.1, hp.2.1, ?_, ?_⟩
+      intro hag hlen
+      refine .single ⟨hp.1, hp.2.1, ?_, ?_, hp.2.2.2.2.1, hlen⟩
       · rw [← hag _ hp.1.le, ← hag i le_rfl]; exact hp.2.2.1
       · intro j' h1 h2 h3
-        rw [← hag j' h2.le, ← hag i le_rfl]; exact hp.2.2.2 j' h1 h2 h3
+        rw [← hag j' h2.le, ← hag i le_rfl]; exact hp.2.2.2.1 j' h1 h2 h3
     | @tail m i _ hp ih =>
-      intro hag
+      intro hag hlen
       have hag' : ∀ x ≤ m, ∀ k', A.col x k' = B.col x k' :=
         fun x hx k' => hag x (hx.trans hp.1.le) k'
-      refine (ih hag').tail ⟨hp.1, hp.2.1, ?_, ?_⟩
+      refine (ih hag' (by have := hp.1; omega)).tail ⟨hp.1, hp.2.1, ?_, ?_, hp.2.2.2.2.1, hlen⟩
       · rw [← hag m hp.1.le, ← hag i le_rfl]; exact hp.2.2.1
       · intro j' h1 h2 h3
-        rw [← hag j' h2.le, ← hag i le_rfl]; exact hp.2.2.2 j' h1 h2 h3
+        rw [← hag j' h2.le, ← hag i le_rfl]; exact hp.2.2.2.1 j' h1 h2 h3
   | succ k ihk =>
     intro i j h
-    have hagB : ∀ i j, anc B k j i → (∀ x ≤ i, ∀ k', A.col x k' = B.col x k') → anc A k j i :=
-      fun i j h hag => ihk (A := B) (B := A) i j h (fun x hx k' => (hag x hx k').symm)
+    have hagB : ∀ i j, anc B k j i → (∀ x ≤ i, ∀ k', A.col x k' = B.col x k') → i < A.len →
+        anc A k j i :=
+      fun i j h hag hlen => ihk (A := B) (B := A) i j h (fun x hx k' => (hag x hx k').symm) hlen
     rw [anc_eq_transGen] at h ⊢
     induction h with
     | @single i hp =>
-      intro hag
-      refine .single ⟨hp.1, ihk i _ hp.2.1 hag, ?_, ?_⟩
+      intro hag hlen
+      refine .single ⟨hp.1, ihk i _ hp.2.1 hag hlen, ?_, ?_, hp.2.2.2.2.1, hlen⟩
       · rw [← hag _ hp.1.le, ← hag i le_rfl]; exact hp.2.2.1
       · intro j' h1 h2 h3
-        rw [← hag j' h2.le, ← hag i le_rfl]; exact hp.2.2.2 j' h1 h2 (hagB i j' h3 hag)
+        rw [← hag j' h2.le, ← hag i le_rfl]
+        exact hp.2.2.2.1 j' h1 h2 (hagB i j' h3 hag hp.2.2.2.2.2)
     | @tail m i _ hp ih =>
-      intro hag
+      intro hag hlen
       have hag' : ∀ x ≤ m, ∀ k', A.col x k' = B.col x k' :=
         fun x hx k' => hag x (hx.trans hp.1.le) k'
-      refine (ih hag').tail ⟨hp.1, ihk i m hp.2.1 hag, ?_, ?_⟩
+      refine (ih hag' (by have := hp.1; omega)).tail
+        ⟨hp.1, ihk i m hp.2.1 hag hlen, ?_, ?_, hp.2.2.2.2.1, hlen⟩
       · rw [← hag m hp.1.le, ← hag i le_rfl]; exact hp.2.2.1
       · intro j' h1 h2 h3
-        rw [← hag j' h2.le, ← hag i le_rfl]; exact hp.2.2.2 j' h1 h2 (hagB i j' h3 hag)
+        rw [← hag j' h2.le, ← hag i le_rfl]
+        exact hp.2.2.2.1 j' h1 h2 (hagB i j' h3 hag hp.2.2.2.2.2)
 
 theorem anc_congr_iff {A B : Arr r} {k i : ℕ} (hag : ∀ x ≤ i, ∀ k', A.col x k' = B.col x k')
-    (j : ℕ) : anc A k j i ↔ anc B k j i :=
-  ⟨fun h => anc_congr k i j h hag, fun h => anc_congr k i j h (fun x hx k' => (hag x hx k').symm)⟩
+    (hA : i < A.len) (hB : i < B.len) (j : ℕ) : anc A k j i ↔ anc B k j i :=
+  ⟨fun h => anc_congr k i j h hag hB,
+   fun h => anc_congr k i j h (fun x hx k' => (hag x hx k').symm) hA⟩
 
 theorem cand_congr_iff {A B : Arr r} {k i : ℕ} (hag : ∀ x ≤ i, ∀ k', A.col x k' = B.col x k')
-    (j : ℕ) : cand A k j i ↔ cand B k j i := by
+    (hA : i < A.len) (hB : i < B.len) (j : ℕ) : cand A k j i ↔ cand B k j i := by
   cases k with
   | zero => exact Iff.rfl
-  | succ k => exact anc_congr_iff hag j
+  | succ k => exact anc_congr_iff hag hA hB j
 
 theorem parent_congr_iff {A B : Arr r} {k i : ℕ} (hag : ∀ x ≤ i, ∀ k', A.col x k' = B.col x k')
-    (j : ℕ) : parent A k j i ↔ parent B k j i := by
+    (hA : i < A.len) (hB : i < B.len) (j : ℕ) : parent A k j i ↔ parent B k j i := by
   have hv : ∀ x ≤ i, A.col x k = B.col x k := fun x hx => hag x hx k
   constructor
-  · rintro ⟨h1, h2, h3, h4⟩
-    refine ⟨h1, (cand_congr_iff hag j).mp h2, ?_, ?_⟩
+  · rintro ⟨h1, h2, h3, h4, hk, -⟩
+    refine ⟨h1, (cand_congr_iff hag hA hB j).mp h2, ?_, ?_, hk, hB⟩
     · rw [← hv j h1.le, ← hv i le_rfl]; exact h3
     · intro j' hj hi hc
-      rw [← hv j' hi.le, ← hv i le_rfl]; exact h4 j' hj hi ((cand_congr_iff hag j').mpr hc)
-  · rintro ⟨h1, h2, h3, h4⟩
-    refine ⟨h1, (cand_congr_iff hag j).mpr h2, ?_, ?_⟩
+      rw [← hv j' hi.le, ← hv i le_rfl]
+      exact h4 j' hj hi ((cand_congr_iff hag hA hB j').mpr hc)
+  · rintro ⟨h1, h2, h3, h4, hk, -⟩
+    refine ⟨h1, (cand_congr_iff hag hA hB j).mpr h2, ?_, ?_, hk, hA⟩
     · rw [hv j h1.le, hv i le_rfl]; exact h3
     · intro j' hj hi hc
-      rw [hv j' hi.le, hv i le_rfl]; exact h4 j' hj hi ((cand_congr_iff hag j').mp hc)
+      rw [hv j' hi.le, hv i le_rfl]
+      exact h4 j' hj hi ((cand_congr_iff hag hA hB j').mp hc)
 
 theorem ancEq_congr_iff {A B : Arr r} {k i : ℕ} (hag : ∀ x ≤ i, ∀ k', A.col x k' = B.col x k')
-    (j : ℕ) : ancEq A k j i ↔ ancEq B k j i := by
-  unfold ancEq; rw [anc_congr_iff hag]
+    (hA : i < A.len) (hB : i < B.len) (j : ℕ) : ancEq A k j i ↔ ancEq B k j i := by
+  unfold ancEq; rw [anc_congr_iff hag hA hB]
 
-/-- Lemma 3.1 proper: a prefix has the same parents/ancestors. -/
-theorem anc_prefix (A : Arr r) (m : ℕ) (k j i : ℕ) :
+/-- **Lemma 3.1**: let `m ≤ ℓ` and let the prefix be `A↾m = (A_0,…,A_{m-1})`.  For positions of
+the prefix the `k`-ancestor relation computed in `A↾m` and in `A` agree. -/
+theorem anc_prefix (A : Arr r) {m : ℕ} (hm : m ≤ A.len) {k j i : ℕ} (hi : i < m) :
     anc (⟨m, A.col⟩ : Arr r) k j i ↔ anc A k j i :=
-  anc_congr_iff (A := (⟨m, A.col⟩ : Arr r)) (B := A) (fun _ _ _ => rfl) j
+  anc_congr_iff (A := (⟨m, A.col⟩ : Arr r)) (B := A) (fun _ _ _ => rfl) hi (by omega) j
 
 /-- Exit point of an ancestor chain: if `y < p ≤ v` and `y ≺ₖ v`, the chain from `v` has a
-last element `u ≥ p`, whose parent `y' < p` is a non-strict ancestor-or-equal of `y`. -/
+last element `u ≥ p`, whose parent `y' < p` is a non-strict ancestor-or-equal of `y`.
+
+The paper has no numbered statement here. This is the formal content of the step it takes
+informally in §6.5 and §6.6 — 「`D_j` から `k`-親鎖を左へたどる」, following the parent chain
+leftwards until it leaves a region — used in the proofs of Lemmas 6.6 and 6.7. -/
 theorem anc_exit_point {A : Arr r} {k y v p : ℕ} (h : anc A k y v) (hy : y < p) (hv : p ≤ v) :
     ∃ u y', p ≤ u ∧ ancEq A k u v ∧ parent A k y' u ∧ y' < p ∧ ancEq A k y y' := by
   rw [anc_eq_transGen] at h
@@ -323,7 +344,8 @@ theorem anc_of_parent_of_between {A : Arr r} {k u v : ℕ} (huv : parent A k u v
     | succ k => exact anc_of_anc_of_anc_of_lt (parent_succ_anc huv) hcw huw
   have hw_inv : A.col v k ≤ A.col w k := parent_max huv huw hwv hcw
   have hvu : A.col u k < A.col w k := lt_of_lt_of_le (parent_val_lt huv) hw_inv
-  obtain ⟨z, hz⟩ := exists_parent_of_valid hcu hvu
+  obtain ⟨z, hz⟩ := exists_parent_of_valid (parent_row_lt huv)
+    (by have := parent_target_lt huv; omega) hcu hvu
   have huz : u ≤ z := by
     by_contra h
     push Not at h

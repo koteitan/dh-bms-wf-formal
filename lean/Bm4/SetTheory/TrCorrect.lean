@@ -135,68 +135,77 @@ theorem isSeqA_mem_of_wClosed {W s : ZFSet.{u}} (hW : WClosed W) (hs : IsSeqA ω
   exact seqVal_mem_of_vals hW.empty_mem hf hval k
 
 
+/-- A finite sequence of `V` that lies in a transitive `W` is a finite sequence over `W`. -/
+theorem isSeqA_of_isSeqV {W a : ZFSet.{u}} (hWt : W.IsTransitive) (ha : IsSeqV ωZ a)
+    (haW : a ∈ W) : IsSeqA ωZ W a :=
+  ⟨ha.1, ha.2, fun _ _ hix => snd_mem_of_kpair_mem hWt (hWt.subset_of_mem haW hix)⟩
+
+/-! ### The Δ₀ base under the `∅`-padding of `TrMSig` and `TrMPi`
+
+Definition 13.2 judges only *appropriate* assignments: `Tr⁺_{Δ₀}(e, a)` carries `Asn_A(e, a)`,
+so an `a` whose domain misses a free variable of `e` is never judged, and Lemma 13.3
+(`BaseCorrect`) assumes the same.  `TrMSig` and `TrMPi` therefore evaluate the base at an
+`∅`-padding of `a`; padding leaves every value unchanged, so these five lemmas move the
+equivalence of Lemma 13.3 from the appropriate assignment to an arbitrary finite sequence. -/
+
+/-- A bound above every free variable of `φ`. -/
+theorem exists_fv_bound (φ : Fm) : ∃ n, ∀ k ∈ Fm.fv φ, k < n :=
+  ⟨(Fm.fv φ).sup (fun k => k + 1), fun _ hk => Finset.le_sup (f := fun k => k + 1) hk⟩
+
+/-- An `∅`-padding of `a` inside `W` that is an appropriate assignment for `φ`. -/
+theorem exists_padAsn {W : ZFSet.{u}} (hW : WClosed W) {a : ZFSet.{u}} (ha : IsSeqA ωZ W a)
+    (φ : Fm) :
+    ∃ b, b ∈ W ∧ IsSeqA ωZ W b ∧ IsPadOf a b ∧ SeqVal b = SeqVal a ∧
+      ∀ k ∈ Fm.fv φ, InDomZ b (natZ k) := by
+  obtain ⟨n, hn⟩ := exists_fv_bound φ
+  obtain ⟨b, hb, hpad, hval, hdom⟩ := exists_padSeq ha hW.empty_mem n
+  exact ⟨b, isSeqA_mem_of_wClosed hW hb, hb, hpad, hval, fun k hk => hdom k (hn k hk)⟩
+
+/-- `Tr⁺_{Δ₀}` at a padding of `a` implies satisfaction: the `Asn_A` conjunct of Definition
+13.2 makes that padding an appropriate assignment. -/
+theorem sat_of_pad_trD0P {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W)
+    {φ : Fm} (hφ : IsDelta0 φ) {a b : ZFSet.{u}} (ha : IsSeqA ωZ W a) (hbW : b ∈ W)
+    (hpad : IsPadOf a b) (h : TrD0P (· ∈ W) (L Ordinal.omega0) ωZ (Fm.code.{u} φ) b) :
+    Sat (· ∈ W) (SeqVal a) φ := by
+  obtain ⟨-, A, -, U, -, T, -, -, hasn, -, -, -⟩ := id h
+  obtain ⟨hbA, hcov⟩ := isAsn_code_iff.mp hasn
+  have hbseq : IsSeqA ωZ W b := isSeqA_of_isSeqV hWt (isSeqV_of_isSeqA hbA) hbW
+  have hval : SeqVal b = SeqVal a := seqVal_of_isPadOf ha.1 hbA.1 hpad
+  rw [← hval]
+  exact ((hbase φ hφ b hbseq hbW hcov).1).mp h
+
+/-- Satisfaction implies `Tr⁻_{Δ₀}` at every padding of `a` in `W`. -/
+theorem pad_trD0N_of_sat {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W)
+    {φ : Fm} (hφ : IsDelta0 φ) {a b : ZFSet.{u}} (ha : IsSeqA ωZ W a) (hbW : b ∈ W)
+    (hpad : IsPadOf a b) (hs : Sat (· ∈ W) (SeqVal a) φ) :
+    TrD0N (· ∈ W) (L Ordinal.omega0) ωZ (Fm.code.{u} φ) b := by
+  refine ⟨(isDelta0CodeW_iff _).mpr ⟨φ, hφ, rfl⟩, ?_⟩
+  rintro A hA U hU T hT ⟨hAt, hasn, hbU, hc⟩
+  obtain ⟨hbA, hcov⟩ := isAsn_code_iff.mp hasn
+  have hbseq : IsSeqA ωZ W b := isSeqA_of_isSeqV hWt (isSeqV_of_isSeqA hbA) hbW
+  have hval : SeqVal b = SeqVal a := seqVal_of_isPadOf ha.1 hbA.1 hpad
+  refine ((hbase φ hφ b hbseq hbW hcov).2.mpr ?_).2 A hA U hU T hT ⟨hAt, hasn, hbU, hc⟩
+  rw [hval]; exact hs
+
+/-- Satisfaction is witnessed by `Tr⁺_{Δ₀}` at some padding of `a` in `W`. -/
+theorem exists_pad_trD0P_of_sat {W : ZFSet.{u}} (hW : WClosed W) (hbase : BaseCorrect W)
+    {φ : Fm} (hφ : IsDelta0 φ) {a : ZFSet.{u}} (ha : IsSeqA ωZ W a)
+    (hs : Sat (· ∈ W) (SeqVal a) φ) :
+    ∃ b, b ∈ W ∧ IsPadOf a b ∧ TrD0P (· ∈ W) (L Ordinal.omega0) ωZ (Fm.code.{u} φ) b := by
+  obtain ⟨b, hbW, hbseq, hpad, hval, hcov⟩ := exists_padAsn hW ha φ
+  exact ⟨b, hbW, hpad, ((hbase φ hφ b hbseq hbW hcov).1).mpr (by rw [hval]; exact hs)⟩
+
+/-- Failure of satisfaction is witnessed by the failure of `Tr⁻_{Δ₀}` at some padding. -/
+theorem exists_pad_not_trD0N_of_not_sat {W : ZFSet.{u}} (hW : WClosed W)
+    (hbase : BaseCorrect W) {φ : Fm} (hφ : IsDelta0 φ) {a : ZFSet.{u}} (ha : IsSeqA ωZ W a)
+    (hs : ¬ Sat (· ∈ W) (SeqVal a) φ) :
+    ∃ b, b ∈ W ∧ IsPadOf a b ∧ ¬ TrD0N (· ∈ W) (L Ordinal.omega0) ωZ (Fm.code.{u} φ) b := by
+  obtain ⟨b, hbW, hbseq, hpad, hval, hcov⟩ := exists_padAsn hW ha φ
+  refine ⟨b, hbW, hpad, fun h => hs ?_⟩
+  rw [← hval]
+  exact ((hbase φ hφ b hbseq hbW hcov).2).mp h
+
 /-! ### Block updates inside `W` -/
-
-/-- A block update never shrinks the domain of the assignment. -/
-theorem blkUpd_dom_mono {a ν t b : ZFSet.{u}} (hbu : IsBlkUpd a ν t b) {c : ZFSet.{u}}
-    (h : ∃ y, ZFSet.pair c y ∈ a) : ∃ y, ZFSet.pair c y ∈ b := by
-  obtain ⟨y, hy⟩ := h
-  by_cases hc : ∃ m, ZFSet.pair m c ∈ ν
-  · obtain ⟨m, hm⟩ := hc
-    obtain ⟨z, hz⟩ := hbu.2.2.1 m c hm
-    exact ⟨z, (hbu.2.2.2.2 _).mpr ⟨_, _, rfl, Or.inl ⟨m, hm, hz⟩⟩⟩
-  · push Not at hc
-    exact ⟨y, (hbu.2.2.2.2 _).mpr ⟨_, _, rfl,
-      Or.inr ⟨hy, fun m k' hmk' hkc => hc m (hkc ▸ hmk')⟩⟩⟩
-
-/-- The value part of a block update along `l` has domain `l.length`. -/
-theorem isDom_of_blkUpd {a t b : ZFSet.{u}} {l : List ℕ}
-    (hbu : IsBlkUpd a (seqOfNats.{u} l) t b) : IsDom t (natZ.{u} l.length) := by
-  intro c
-  constructor
-  · intro hc
-    obtain ⟨j, hj, rfl⟩ := mem_natZ_iff.mp hc
-    have hν : ZFSet.pair (natZ.{u} j) (natZ.{u} (l[j]'hj)) ∈ seqOfNats.{u} l :=
-      mem_seqOfNats.mpr (List.getElem?_eq_getElem hj)
-    exact hbu.2.2.1 _ _ hν
-  · rintro ⟨y, hy⟩
-    obtain ⟨x, hx⟩ := hbu.2.2.2.1 _ _ hy
-    obtain ⟨n, i, hni, he⟩ := mem_seqOfNats_iff.mp hx
-    obtain ⟨rfl, -⟩ := ZFSet.pair_injective he
-    exact natZ_mem_natZ_iff.mpr (List.getElem?_eq_some_iff.mp hni).1
-
-/-- Any block update inside `W` comes from a list of values of `W`. -/
-theorem blkUpd_list {W : ZFSet.{u}} (hWt : W.IsTransitive) (hW : WClosed W)
-    {a : ZFSet.{u}} (ha : IsSeqA ωZ W a) {l : List ℕ} (hnd : l.Nodup)
-    (hdom : ∀ i ∈ l, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a)
-    {t b : ZFSet.{u}} (htW : t ∈ W) (hbu : IsBlkUpd a (seqOfNats.{u} l) t b) :
-    ∃ xs : List ZFSet.{u}, xs.length = l.length ∧ (∀ x ∈ xs, x ∈ W) ∧
-      IsSeqA ωZ W b ∧ SeqVal b = updList (SeqVal a) l xs := by
-  have hft : IsFunc t := hbu.2.1
-  have hvalt : ∀ i x, ZFSet.pair i x ∈ t → x ∈ W := fun i x hix =>
-    snd_mem_of_kpair_mem hWt (hWt.subset_of_mem htW hix)
-  have hdt : IsDom t (natZ.{u} l.length) := isDom_of_blkUpd hbu
-  obtain ⟨xs, hlen, hxsW, hteq⟩ : ∃ xs : List ZFSet.{u}, xs.length = l.length ∧
-      (∀ x ∈ xs, x ∈ W) ∧ t = seqOfVals xs := by
-    refine ⟨(List.range l.length).map (SeqVal.{u} t), by simp, ?_, seq_eq_seqOfVals hft hdt⟩
-    intro x hx
-    rw [List.mem_map] at hx
-    obtain ⟨k, -, rfl⟩ := hx
-    exact seqVal_mem_of_vals hW.empty_mem hft hvalt k
-  rw [hteq] at hbu
-  obtain ⟨b₀, hbu₀, hseq₀, hval₀⟩ := exists_blkUpd ha l hnd hdom xs hlen hxsW
-  have hbb : b₀ = b := isBlkUpd_unique hbu₀ hbu
-  subst hbb
-  exact ⟨xs, hlen, hxsW, hseq₀, hval₀⟩
-
-/-- The block update of a sequence of `W` by values of `W` exists inside `W`. -/
-theorem exists_blkUpd_W {W : ZFSet.{u}} (hW : WClosed W) {a : ZFSet.{u}} (ha : IsSeqA ωZ W a)
-    {l : List ℕ} (hnd : l.Nodup) (hdom : ∀ i ∈ l, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a)
-    {xs : List ZFSet.{u}} (hlen : xs.length = l.length) (hxs : ∀ x ∈ xs, x ∈ W) :
-    ∃ b, IsBlkUpd a (seqOfNats.{u} l) (seqOfVals xs) b ∧ IsSeqA ωZ W b ∧ b ∈ W ∧
-      SeqVal b = updList (SeqVal a) l xs := by
-  obtain ⟨b, hbu, hseq, hval⟩ := exists_blkUpd ha l hnd hdom xs hlen hxs
-  exact ⟨b, hbu, hseq, isSeqA_mem_of_wClosed hW hseq, hval⟩
 
 /-! ### Good assignments -/
 
@@ -205,14 +214,6 @@ def BF.blockVars : BF → List ℕ
   | .delta _ _ => []
   | .exs l ψ => l ++ ψ.blockVars
   | .alls l ψ => l ++ ψ.blockVars
-
-/-- The assignment `a` is a finite sequence over `W` whose domain covers every block variable.
-Besides the three clauses of the statement of Theorem 13.6 this records:
-the block variable lists have no repetitions (otherwise the block update is not well defined),
-the code of `b` lies in `W`, and `W` is closed under `∅` and `insert`. -/
-def GoodAsn (W : ZFSet.{u}) (b : BF) (a : ZFSet.{u}) : Prop :=
-  IsSeqA ωZ W a ∧ a ∈ W ∧ (∀ i ∈ b.blockVars, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a) ∧
-    b.blockVars.Nodup ∧ BF.code.{u} b ∈ W ∧ WClosed W
 
 /-! ### The code guard of Definitions 13.2 and 13.4 on codes of block formulas -/
 
@@ -262,12 +263,10 @@ theorem toFm_delta_true (φ : Fm) : (BF.delta true φ).toFm = φ := rfl
 theorem toFm_delta_false (φ : Fm) : (BF.delta false φ).toFm = Fm.not φ := rfl
 
 theorem trMSig_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W)
-    {sg : Bool} {φ : Fm} (hφ : IsDelta0 φ) {a : ZFSet.{u}}
-    (hg : GoodAsn W (BF.delta sg φ) a) :
+    {sg : Bool} {φ : Fm} (hφ : IsDelta0 φ) {a : ZFSet.{u}} (ha : IsSeqA ωZ W a)
+    (haW : a ∈ W) (hcode : BF.code.{u} (BF.delta sg φ) ∈ W) (hW : WClosed W) :
     TrMSig (· ∈ W) (L Ordinal.omega0) ωZ (BF.code.{u} (BF.delta sg φ)) a ↔
       Sat (· ∈ W) (SeqVal a) (BF.delta sg φ).toFm := by
-  obtain ⟨ha, haW, -, -, hcode, hW⟩ := hg
-  obtain ⟨hP, hN⟩ := hbase φ hφ a ha haW
   have hdW : Fm.code.{u} φ ∈ W := by
     simp only [BF.code] at hcode
     exact snd_mem_of_kpair_mem hWt (snd_mem_of_kpair_mem hWt hcode)
@@ -277,32 +276,32 @@ theorem trMSig_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorre
   cases sg
   · rw [code_delta_false, toFm_delta_false, sat_not]
     constructor
-    · rintro ⟨sg', hsg', d, hd, heq, hcase⟩
+    · rintro ⟨sg', -, d, -, heq, b, hbW, hpad, hcase⟩
       obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
       obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
       rcases hcase with ⟨h1, -⟩ | ⟨-, h2⟩
       · exact absurd (natZ_injective h1) (by decide)
-      · exact fun hs => h2 (hN.mpr hs)
+      · exact fun hs => h2 (pad_trD0N_of_sat hWt hbase hφ ha hbW hpad hs)
     · intro hs
-      exact ⟨natZ 0, hz, Fm.code.{u} φ, hdW, rfl, Or.inr ⟨rfl, fun h => hs (hN.mp h)⟩⟩
+      obtain ⟨b, hbW, hpad, h2⟩ := exists_pad_not_trD0N_of_not_sat hW hbase hφ ha hs
+      exact ⟨natZ 0, hz, Fm.code.{u} φ, hdW, rfl, b, hbW, hpad, Or.inr ⟨rfl, h2⟩⟩
   · rw [code_delta_true, toFm_delta_true]
     constructor
-    · rintro ⟨sg', hsg', d, hd, heq, hcase⟩
+    · rintro ⟨sg', -, d, -, heq, b, hbW, hpad, hcase⟩
       obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
       obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
       rcases hcase with ⟨-, h1⟩ | ⟨h2, -⟩
-      · exact hP.mp h1
+      · exact sat_of_pad_trD0P hWt hbase hφ ha hbW hpad h1
       · exact absurd (natZ_injective h2) (by decide)
     · intro hs
-      exact ⟨natZ 1, ho, Fm.code.{u} φ, hdW, rfl, Or.inl ⟨rfl, hP.mpr hs⟩⟩
+      obtain ⟨b, hbW, hpad, h1⟩ := exists_pad_trD0P_of_sat hW hbase hφ ha hs
+      exact ⟨natZ 1, ho, Fm.code.{u} φ, hdW, rfl, b, hbW, hpad, Or.inl ⟨rfl, h1⟩⟩
 
 theorem trMPi_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W)
-    {sg : Bool} {φ : Fm} (hφ : IsDelta0 φ) {a : ZFSet.{u}}
-    (hg : GoodAsn W (BF.delta sg φ) a) :
+    {sg : Bool} {φ : Fm} (hφ : IsDelta0 φ) {a : ZFSet.{u}} (ha : IsSeqA ωZ W a)
+    (haW : a ∈ W) (hcode : BF.code.{u} (BF.delta sg φ) ∈ W) (hW : WClosed W) :
     TrMPi (· ∈ W) (L Ordinal.omega0) ωZ (BF.code.{u} (BF.delta sg φ)) a ↔
       Sat (· ∈ W) (SeqVal a) (BF.delta sg φ).toFm := by
-  obtain ⟨ha, haW, -, -, hcode, hW⟩ := hg
-  obtain ⟨hP, hN⟩ := hbase φ hφ a ha haW
   have hdW : Fm.code.{u} φ ∈ W := by
     simp only [BF.code] at hcode
     exact snd_mem_of_kpair_mem hWt (snd_mem_of_kpair_mem hWt hcode)
@@ -312,22 +311,25 @@ theorem trMPi_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrec
   cases sg
   · rw [code_delta_false, toFm_delta_false, sat_not]
     constructor
-    · intro H
-      obtain ⟨-, h2⟩ := H (natZ 0) hz (Fm.code.{u} φ) hdW rfl
-      exact fun hs => h2 rfl (hP.mpr hs)
-    · intro hs sg' hsg' d hd heq
+    · intro H hs
+      obtain ⟨b, hbW, hpad, h1⟩ := exists_pad_trD0P_of_sat hW hbase hφ ha hs
+      exact (H (natZ 0) hz (Fm.code.{u} φ) hdW rfl b hbW hpad).2 rfl h1
+    · rintro hs sg' - d - heq b hbW hpad
       obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
       obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-      exact ⟨fun h1 => absurd (natZ_injective h1) (by decide), fun _ h => hs (hP.mp h)⟩
+      exact ⟨fun h1 => absurd (natZ_injective h1) (by decide),
+        fun _ h => hs (sat_of_pad_trD0P hWt hbase hφ ha hbW hpad h)⟩
   · rw [code_delta_true, toFm_delta_true]
     constructor
     · intro H
-      obtain ⟨h1, -⟩ := H (natZ 1) ho (Fm.code.{u} φ) hdW rfl
-      exact hN.mp (h1 rfl)
-    · intro hs sg' hsg' d hd heq
+      by_contra hs
+      obtain ⟨b, hbW, hpad, h2⟩ := exists_pad_not_trD0N_of_not_sat hW hbase hφ ha hs
+      exact h2 ((H (natZ 1) ho (Fm.code.{u} φ) hdW rfl b hbW hpad).1 rfl)
+    · rintro hs sg' - d - heq b hbW hpad
       obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
       obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-      exact ⟨fun _ => hN.mpr hs, fun h0 => absurd (natZ_injective h0) (by decide)⟩
+      exact ⟨fun _ => pad_trD0N_of_sat hWt hbase hφ ha hbW hpad hs,
+        fun h0 => absurd (natZ_injective h0) (by decide)⟩
 
 
 /-! ### The quantifier-block step -/
@@ -342,163 +344,7 @@ theorem toFm_exs (l : List ℕ) (ψ : BF) : (BF.exs l ψ).toFm = Fm.exs l ψ.toF
 
 theorem toFm_alls (l : List ℕ) (ψ : BF) : (BF.alls l ψ).toFm = Fm.alls l ψ.toFm := rfl
 
-theorem trSig_step {W : ZFSet.{u}} (hWt : W.IsTransitive) {l : List ℕ} {ψ : BF}
-    {a : ZFSet.{u}} (hg : GoodAsn W (BF.exs l ψ) a)
-    {P : ZFSet.{u} → ZFSet.{u} → Prop}
-    (hP : ∀ b, GoodAsn W ψ b → (P (BF.code.{u} ψ) b ↔ Sat (· ∈ W) (SeqVal b) ψ.toFm)) :
-    (∃ ν, ν ∈ W ∧ ∃ d, d ∈ W ∧ ∃ t, t ∈ W ∧ ∃ b, b ∈ W ∧
-        BF.code.{u} (BF.exs l ψ) = ZFSet.pair (natZ 1) (ZFSet.pair ν d) ∧
-        IsBlkUpd a ν t b ∧ P d b) ↔
-      Sat (· ∈ W) (SeqVal a) (BF.exs l ψ).toFm := by
-  obtain ⟨ha, haW, hdom, hnd, hcode, hW⟩ := hg
-  simp only [BF.blockVars] at hdom hnd
-  have hndl : l.Nodup := (List.nodup_append.mp hnd).1
-  have hndψ : ψ.blockVars.Nodup := (List.nodup_append.mp hnd).2.1
-  have hdoml : ∀ i ∈ l, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a :=
-    fun i hi => hdom i (List.mem_append_left _ hi)
-  have hdomψ : ∀ i ∈ ψ.blockVars, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a :=
-    fun i hi => hdom i (List.mem_append_right _ hi)
-  rw [code_exs] at hcode
-  have hcodeψ : BF.code.{u} ψ ∈ W :=
-    snd_mem_of_kpair_mem hWt (snd_mem_of_kpair_mem hWt hcode)
-  rw [toFm_exs, sat_exs_iff_exsD, exsD_iff_exists_list]
-  constructor
-  · rintro ⟨ν, hνW, d, hdW, t, htW, b, hbW, heq, hbu, hPd⟩
-    rw [code_exs] at heq
-    obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
-    obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-    obtain ⟨xs, hlen, hxsW, hseqb, hvalb⟩ := blkUpd_list hWt hW ha hndl hdoml htW hbu
-    refine ⟨xs, hlen, hxsW, ?_⟩
-    rw [← hvalb]
-    exact (hP b ⟨hseqb, hbW, fun i hi => blkUpd_dom_mono hbu (hdomψ i hi), hndψ,
-      hcodeψ, hW⟩).mp hPd
-  · rintro ⟨xs, hlen, hxsW, hsat⟩
-    obtain ⟨b, hbu, hseqb, hbW, hvalb⟩ := exists_blkUpd_W hW ha hndl hdoml hlen hxsW
-    refine ⟨seqOfNats.{u} l, hW.seqOfNats_mem l, BF.code.{u} ψ, hcodeψ,
-      seqOfVals xs, hW.seqOfVals_mem xs hxsW, b, hbW, code_exs l ψ, hbu, ?_⟩
-    refine (hP b ⟨hseqb, hbW, fun i hi => blkUpd_dom_mono hbu (hdomψ i hi), hndψ,
-      hcodeψ, hW⟩).mpr ?_
-    rw [hvalb]
-    exact hsat
-
-theorem trPi_step {W : ZFSet.{u}} (hWt : W.IsTransitive) {l : List ℕ} {ψ : BF}
-    {a : ZFSet.{u}} (hg : GoodAsn W (BF.alls l ψ) a)
-    {P : ZFSet.{u} → ZFSet.{u} → Prop}
-    (hP : ∀ b, GoodAsn W ψ b → (P (BF.code.{u} ψ) b ↔ Sat (· ∈ W) (SeqVal b) ψ.toFm)) :
-    (∀ ν, ν ∈ W → ∀ d, d ∈ W → ∀ t, t ∈ W → ∀ b, b ∈ W →
-        BF.code.{u} (BF.alls l ψ) = ZFSet.pair (natZ 2) (ZFSet.pair ν d) →
-        IsBlkUpd a ν t b → P d b) ↔
-      Sat (· ∈ W) (SeqVal a) (BF.alls l ψ).toFm := by
-  obtain ⟨ha, haW, hdom, hnd, hcode, hW⟩ := hg
-  simp only [BF.blockVars] at hdom hnd
-  have hndl : l.Nodup := (List.nodup_append.mp hnd).1
-  have hndψ : ψ.blockVars.Nodup := (List.nodup_append.mp hnd).2.1
-  have hdoml : ∀ i ∈ l, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a :=
-    fun i hi => hdom i (List.mem_append_left _ hi)
-  have hdomψ : ∀ i ∈ ψ.blockVars, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a :=
-    fun i hi => hdom i (List.mem_append_right _ hi)
-  rw [code_alls] at hcode
-  have hcodeψ : BF.code.{u} ψ ∈ W :=
-    snd_mem_of_kpair_mem hWt (snd_mem_of_kpair_mem hWt hcode)
-  rw [toFm_alls, sat_alls_iff_allD, allD_iff_forall_list]
-  constructor
-  · intro H xs hlen hxsW
-    obtain ⟨b, hbu, hseqb, hbW, hvalb⟩ := exists_blkUpd_W hW ha hndl hdoml hlen hxsW
-    have hPd := H (seqOfNats.{u} l) (hW.seqOfNats_mem l) (BF.code.{u} ψ) hcodeψ
-      (seqOfVals xs) (hW.seqOfVals_mem xs hxsW) b hbW (code_alls l ψ) hbu
-    rw [← hvalb]
-    exact (hP b ⟨hseqb, hbW, fun i hi => blkUpd_dom_mono hbu (hdomψ i hi), hndψ,
-      hcodeψ, hW⟩).mp hPd
-  · intro H ν hνW d hdW t htW b hbW heq hbu
-    rw [code_alls] at heq
-    obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
-    obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-    obtain ⟨xs, hlen, hxsW, hseqb, hvalb⟩ := blkUpd_list hWt hW ha hndl hdoml htW hbu
-    refine (hP b ⟨hseqb, hbW, fun i hi => blkUpd_dom_mono hbu (hdomψ i hi), hndψ,
-      hcodeψ, hW⟩).mpr ?_
-    rw [hvalb]
-    exact H xs hlen hxsW
-
-
 /-! ### Theorem 13.6 -/
-
-/-- The two halves of **Theorem 13.6**, by simultaneous strong induction on the number of
-alternating blocks. -/
-theorem trSigPiS_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W) :
-    ∀ (q : ℕ) (b : BF),
-      (BF.Sig q b → ∀ a, GoodAsn W b a →
-        (TrSigS (· ∈ W) (L Ordinal.omega0) ωZ q (BF.code.{u} b) a ↔
-          Sat (· ∈ W) (SeqVal a) b.toFm)) ∧
-      (BF.Pi q b → ∀ a, GoodAsn W b a →
-        (TrPiS (· ∈ W) (L Ordinal.omega0) ωZ q (BF.code.{u} b) a ↔
-          Sat (· ∈ W) (SeqVal a) b.toFm)) := by
-  intro q
-  induction q using Nat.strong_induction_on with
-  | _ q ih =>
-  intro b
-  match q with
-  | 0 =>
-    constructor
-    · intro hs a hg
-      cases hs with
-      | zero hφ => rw [trSigS_zero]; exact trMSig_correct hWt hbase hφ hg
-    · intro hs a hg
-      cases hs with
-      | zero hφ => rw [trPiS_zero]; exact trMPi_correct hWt hbase hφ hg
-  | 1 =>
-    constructor
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trSigS_one, and_iff_right (isSigCodeWD_code (BF.Sig.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2.2.1))]
-        refine trSig_step hWt hg ?_
-        intro b' hg'
-        cases hψ with
-        | zero hφ => exact trMSig_correct hWt hbase hφ hg'
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trPiS_one, and_iff_right (isPiCodeWD_code (BF.Pi.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2.2.1))]
-        refine trPi_step hWt hg ?_
-        intro b' hg'
-        cases hψ with
-        | zero hφ => exact trMPi_correct hWt hbase hφ hg'
-  | n + 2 =>
-    constructor
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trSigS_add_two, and_iff_right (isSigCodeWD_code (BF.Sig.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2.2.1))]
-        refine trSig_step hWt hg ?_
-        intro b' hg'
-        exact (ih (n + 1) (by omega) _).2 hψ b' hg'
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trPiS_add_two, and_iff_right (isPiCodeWD_code (BF.Pi.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2.2.1))]
-        refine trPi_step hWt hg ?_
-        intro b' hg'
-        exact (ih (n + 1) (by omega) _).1 hψ b' hg'
-
-/-- **Theorem 13.6** (Σ side): for a `Σ̂q` block formula `b` and a good assignment `a`, the
-truth predicate `TrSigS` applied to the code of `b` expresses satisfaction of `b` in `W`. -/
-theorem trSigS_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W) :
-    ∀ (q : ℕ) (b : BF), BF.Sig q b → ∀ a, GoodAsn W b a →
-      (TrSigS (· ∈ W) (L Ordinal.omega0) ωZ q (BF.code b) a ↔
-        Sat (· ∈ W) (SeqVal a) b.toFm) :=
-  fun q b => (trSigPiS_correct hWt hbase q b).1
-
-/-- **Theorem 13.6** (Π side). -/
-theorem trPiS_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W) :
-    ∀ (q : ℕ) (b : BF), BF.Pi q b → ∀ a, GoodAsn W b a →
-      (TrPiS (· ∈ W) (L Ordinal.omega0) ωZ q (BF.code b) a ↔
-        Sat (· ∈ W) (SeqVal a) b.toFm) :=
-  fun q b => (trSigPiS_correct hWt hbase q b).2
-
 
 /-! ### Theorem 13.6 in the external universe
 
@@ -524,11 +370,6 @@ theorem exists_wClosed_mem (x y : ZFSet.{u}) :
   · rw [ZFSet.mem_vonNeumann]; exact lt_of_le_of_lt (le_max_left _ _) hbase
   · rw [ZFSet.mem_vonNeumann]; exact lt_of_le_of_lt (le_max_right _ _) hbase
 
-/-- A finite sequence of `V` that lies in a transitive `W` is a finite sequence over `W`. -/
-theorem isSeqA_of_isSeqV {W a : ZFSet.{u}} (hWt : W.IsTransitive) (ha : IsSeqV ωZ a)
-    (haW : a ∈ W) : IsSeqA ωZ W a :=
-  ⟨ha.1, ha.2, fun _ _ hix => snd_mem_of_kpair_mem hWt (hWt.subset_of_mem haW hix)⟩
-
 /-- The entries of a list whose coded sequence lies in a transitive `W` lie in `W`. -/
 theorem mem_of_seqOfVals_mem {W : ZFSet.{u}} (hWt : W.IsTransitive) {xs : List ZFSet.{u}}
     (h : seqOfVals xs ∈ W) : ∀ x ∈ xs, x ∈ W := by
@@ -536,216 +377,112 @@ theorem mem_of_seqOfVals_mem {W : ZFSet.{u}} (hWt : W.IsTransitive) {xs : List Z
   obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hx
   exact snd_mem_of_kpair_mem hWt (hWt.subset_of_mem h (mem_seqOfVals hk))
 
-/-- `GoodAsn` in the external universe: the clauses `a ∈ W` and `BF.code b ∈ W` and the closure
-of `W` are all vacuous in `V`, so only the two clauses of the statement of Theorem 13.6 and the
-block-distinctness clause remain. -/
-def GoodAsnV (b : BF) (a : ZFSet.{u}) : Prop :=
-  IsSeqV ωZ a ∧ (∀ i ∈ b.blockVars, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a) ∧ b.blockVars.Nodup
+/-! #### The Δ₀ base under the padding, in `V` -/
+
+/-- An `∅`-padding of `a` that is an appropriate assignment for `φ`, built in ZFC. -/
+theorem exists_padAsn_V {a : ZFSet.{u}} (ha : IsSeqV ωZ a) (φ : Fm) :
+    ∃ b, IsSeqV ωZ b ∧ IsPadOf a b ∧ SeqVal b = SeqVal a ∧
+      ∀ k ∈ Fm.fv φ, InDomZ b (natZ k) := by
+  obtain ⟨n, hn⟩ := exists_fv_bound φ
+  obtain ⟨A, hAt, hAcl, haA, -⟩ := exists_wClosed_mem a a
+  obtain ⟨b, hb, hpad, hval, hdom⟩ :=
+    exists_padSeq (isSeqA_of_isSeqV hAt ha haA) hAcl.empty_mem n
+  exact ⟨b, isSeqV_of_isSeqA hb, hpad, hval, fun k hk => hdom k (hn k hk)⟩
+
+/-- `Tr⁺_{Δ₀}` at a padding of `a` implies satisfaction in `V`. -/
+theorem satV_of_pad_trD0P (hbase : BaseCorrectV.{u}) {φ : Fm} (hφ : IsDelta0 φ)
+    {a b : ZFSet.{u}} (ha : IsSeqV ωZ a) (hpad : IsPadOf a b)
+    (h : TrD0P (fun _ => True) (L Ordinal.omega0) ωZ (Fm.code.{u} φ) b) :
+    SatV (SeqVal a) φ := by
+  obtain ⟨-, A, -, U, -, T, -, -, hasn, -, -, -⟩ := id h
+  obtain ⟨hbA, hcov⟩ := isAsn_code_iff.mp hasn
+  have hval : SeqVal b = SeqVal a := seqVal_of_isPadOf ha.1 hbA.1 hpad
+  rw [← hval]
+  exact ((hbase φ hφ b (isSeqV_of_isSeqA hbA) hcov).1).mp h
+
+/-- Satisfaction in `V` implies `Tr⁻_{Δ₀}` at every padding of `a`. -/
+theorem pad_trD0N_of_satV (hbase : BaseCorrectV.{u}) {φ : Fm} (hφ : IsDelta0 φ)
+    {a b : ZFSet.{u}} (ha : IsSeqV ωZ a) (hpad : IsPadOf a b) (hs : SatV (SeqVal a) φ) :
+    TrD0N (fun _ => True) (L Ordinal.omega0) ωZ (Fm.code.{u} φ) b := by
+  refine ⟨(isDelta0CodeW_iff _).mpr ⟨φ, hφ, rfl⟩, ?_⟩
+  rintro A - U - T - ⟨hAt, hasn, hbU, hc⟩
+  obtain ⟨hbA, hcov⟩ := isAsn_code_iff.mp hasn
+  have hval : SeqVal b = SeqVal a := seqVal_of_isPadOf ha.1 hbA.1 hpad
+  refine ((hbase φ hφ b (isSeqV_of_isSeqA hbA) hcov).2.mpr ?_).2 A trivial U trivial T trivial
+    ⟨hAt, hasn, hbU, hc⟩
+  rw [hval]; exact hs
+
+/-- Satisfaction in `V` is witnessed by `Tr⁺_{Δ₀}` at some padding of `a`. -/
+theorem exists_pad_trD0P_of_satV (hbase : BaseCorrectV.{u}) {φ : Fm} (hφ : IsDelta0 φ)
+    {a : ZFSet.{u}} (ha : IsSeqV ωZ a) (hs : SatV (SeqVal a) φ) :
+    ∃ b, IsPadOf a b ∧ TrD0P (fun _ => True) (L Ordinal.omega0) ωZ (Fm.code.{u} φ) b := by
+  obtain ⟨b, hbseq, hpad, hval, hcov⟩ := exists_padAsn_V ha φ
+  exact ⟨b, hpad, ((hbase φ hφ b hbseq hcov).1).mpr (by rw [hval]; exact hs)⟩
+
+/-- Failure of satisfaction in `V` is witnessed by the failure of `Tr⁻_{Δ₀}` at some padding. -/
+theorem exists_pad_not_trD0N_of_not_satV (hbase : BaseCorrectV.{u}) {φ : Fm}
+    (hφ : IsDelta0 φ) {a : ZFSet.{u}} (ha : IsSeqV ωZ a) (hs : ¬ SatV (SeqVal a) φ) :
+    ∃ b, IsPadOf a b ∧ ¬ TrD0N (fun _ => True) (L Ordinal.omega0) ωZ (Fm.code.{u} φ) b := by
+  obtain ⟨b, hbseq, hpad, hval, hcov⟩ := exists_padAsn_V ha φ
+  refine ⟨b, hpad, fun h => hs ?_⟩
+  rw [← hval]
+  exact ((hbase φ hφ b hbseq hcov).2).mp h
 
 theorem trMSig_correct_V (hbase : BaseCorrectV.{u}) {sg : Bool} {φ : Fm} (hφ : IsDelta0 φ)
     {a : ZFSet.{u}} (ha : IsSeqV ωZ a) :
     TrMSig (fun _ => True) (L Ordinal.omega0) ωZ (BF.code.{u} (BF.delta sg φ)) a ↔
       SatV (SeqVal a) (BF.delta sg φ).toFm := by
-  obtain ⟨hP, hN⟩ := hbase φ hφ a ha
   refine Iff.trans (and_iff_right (isDeltaBFCodeW_code (sg := sg) hφ)) ?_
   cases sg
   · rw [code_delta_false, toFm_delta_false, SatV, sat_not]
     constructor
-    · rintro ⟨sg', -, d, -, heq, hcase⟩
+    · rintro ⟨sg', -, d, -, heq, b, -, hpad, hcase⟩
       obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
       obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
       rcases hcase with ⟨h1, -⟩ | ⟨-, h2⟩
       · exact absurd (natZ_injective h1) (by decide)
-      · exact fun hs => h2 (hN.mpr hs)
+      · exact fun hs => h2 (pad_trD0N_of_satV hbase hφ ha hpad hs)
     · intro hs
-      exact ⟨natZ 0, trivial, Fm.code.{u} φ, trivial, rfl, Or.inr ⟨rfl, fun h => hs (hN.mp h)⟩⟩
+      obtain ⟨b, hpad, h2⟩ := exists_pad_not_trD0N_of_not_satV hbase hφ ha hs
+      exact ⟨natZ 0, trivial, Fm.code.{u} φ, trivial, rfl, b, trivial, hpad, Or.inr ⟨rfl, h2⟩⟩
   · rw [code_delta_true, toFm_delta_true]
     constructor
-    · rintro ⟨sg', -, d, -, heq, hcase⟩
+    · rintro ⟨sg', -, d, -, heq, b, -, hpad, hcase⟩
       obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
       obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
       rcases hcase with ⟨-, h1⟩ | ⟨h2, -⟩
-      · exact hP.mp h1
+      · exact satV_of_pad_trD0P hbase hφ ha hpad h1
       · exact absurd (natZ_injective h2) (by decide)
     · intro hs
-      exact ⟨natZ 1, trivial, Fm.code.{u} φ, trivial, rfl, Or.inl ⟨rfl, hP.mpr hs⟩⟩
+      obtain ⟨b, hpad, h1⟩ := exists_pad_trD0P_of_satV hbase hφ ha hs
+      exact ⟨natZ 1, trivial, Fm.code.{u} φ, trivial, rfl, b, trivial, hpad, Or.inl ⟨rfl, h1⟩⟩
 
 theorem trMPi_correct_V (hbase : BaseCorrectV.{u}) {sg : Bool} {φ : Fm} (hφ : IsDelta0 φ)
     {a : ZFSet.{u}} (ha : IsSeqV ωZ a) :
     TrMPi (fun _ => True) (L Ordinal.omega0) ωZ (BF.code.{u} (BF.delta sg φ)) a ↔
       SatV (SeqVal a) (BF.delta sg φ).toFm := by
-  obtain ⟨hP, hN⟩ := hbase φ hφ a ha
   refine Iff.trans (and_iff_right (isDeltaBFCodeW_code (sg := sg) hφ)) ?_
   cases sg
   · rw [code_delta_false, toFm_delta_false, SatV, sat_not]
     constructor
-    · intro H
-      obtain ⟨-, h2⟩ := H (natZ 0) trivial (Fm.code.{u} φ) trivial rfl
-      exact fun hs => h2 rfl (hP.mpr hs)
-    · intro hs sg' _ d _ heq
+    · intro H hs
+      obtain ⟨b, hpad, h1⟩ := exists_pad_trD0P_of_satV hbase hφ ha hs
+      exact (H (natZ 0) trivial (Fm.code.{u} φ) trivial rfl b trivial hpad).2 rfl h1
+    · rintro hs sg' - d - heq b - hpad
       obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
       obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-      exact ⟨fun h1 => absurd (natZ_injective h1) (by decide), fun _ h => hs (hP.mp h)⟩
+      exact ⟨fun h1 => absurd (natZ_injective h1) (by decide),
+        fun _ h => hs (satV_of_pad_trD0P hbase hφ ha hpad h)⟩
   · rw [code_delta_true, toFm_delta_true]
     constructor
     · intro H
-      obtain ⟨h1, -⟩ := H (natZ 1) trivial (Fm.code.{u} φ) trivial rfl
-      exact hN.mp (h1 rfl)
-    · intro hs sg' _ d _ heq
+      by_contra hs
+      obtain ⟨b, hpad, h2⟩ := exists_pad_not_trD0N_of_not_satV hbase hφ ha hs
+      exact h2 ((H (natZ 1) trivial (Fm.code.{u} φ) trivial rfl b trivial hpad).1 rfl)
+    · rintro hs sg' - d - heq b - hpad
       obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
       obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-      exact ⟨fun _ => hN.mpr hs, fun h0 => absurd (natZ_injective h0) (by decide)⟩
-
-theorem trSig_step_V {l : List ℕ} {ψ : BF} {a : ZFSet.{u}} (hg : GoodAsnV (BF.exs l ψ) a)
-    {P : ZFSet.{u} → ZFSet.{u} → Prop}
-    (hP : ∀ b, GoodAsnV ψ b → (P (BF.code.{u} ψ) b ↔ SatV (SeqVal b) ψ.toFm)) :
-    (∃ ν, True ∧ ∃ d, True ∧ ∃ t, True ∧ ∃ b, True ∧
-        BF.code.{u} (BF.exs l ψ) = ZFSet.pair (natZ 1) (ZFSet.pair ν d) ∧
-        IsBlkUpd a ν t b ∧ P d b) ↔
-      SatV (SeqVal a) (BF.exs l ψ).toFm := by
-  obtain ⟨ha, hdom, hnd⟩ := hg
-  simp only [BF.blockVars] at hdom hnd
-  have hndl : l.Nodup := (List.nodup_append.mp hnd).1
-  have hndψ : ψ.blockVars.Nodup := (List.nodup_append.mp hnd).2.1
-  have hdoml : ∀ i ∈ l, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a :=
-    fun i hi => hdom i (List.mem_append_left _ hi)
-  have hdomψ : ∀ i ∈ ψ.blockVars, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a :=
-    fun i hi => hdom i (List.mem_append_right _ hi)
-  rw [toFm_exs, SatV, sat_exs_iff_exsD, exsD_iff_exists_list]
-  constructor
-  · rintro ⟨ν, -, d, -, t, -, b, -, heq, hbu, hPd⟩
-    rw [code_exs] at heq
-    obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
-    obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-    obtain ⟨W, hWt, hW, haW, htW⟩ := exists_wClosed_mem a t
-    obtain ⟨xs, hlen, -, hseqb, hvalb⟩ :=
-      blkUpd_list hWt hW (isSeqA_of_isSeqV hWt ha haW) hndl hdoml htW hbu
-    refine ⟨xs, hlen, fun _ _ => trivial, ?_⟩
-    rw [← hvalb]
-    exact (hP b ⟨isSeqV_of_isSeqA hseqb, fun i hi => blkUpd_dom_mono hbu (hdomψ i hi),
-      hndψ⟩).mp hPd
-  · rintro ⟨xs, hlen, -, hsat⟩
-    obtain ⟨W, hWt, hW, haW, hvW⟩ := exists_wClosed_mem a (seqOfVals xs)
-    obtain ⟨b, hbu, hseqb, -, hvalb⟩ := exists_blkUpd_W hW (isSeqA_of_isSeqV hWt ha haW) hndl
-      hdoml hlen (mem_of_seqOfVals_mem hWt hvW)
-    refine ⟨seqOfNats.{u} l, trivial, BF.code.{u} ψ, trivial, seqOfVals xs, trivial, b, trivial,
-      code_exs l ψ, hbu, ?_⟩
-    refine (hP b ⟨isSeqV_of_isSeqA hseqb, fun i hi => blkUpd_dom_mono hbu (hdomψ i hi),
-      hndψ⟩).mpr ?_
-    rw [hvalb]
-    exact hsat
-
-theorem trPi_step_V {l : List ℕ} {ψ : BF} {a : ZFSet.{u}} (hg : GoodAsnV (BF.alls l ψ) a)
-    {P : ZFSet.{u} → ZFSet.{u} → Prop}
-    (hP : ∀ b, GoodAsnV ψ b → (P (BF.code.{u} ψ) b ↔ SatV (SeqVal b) ψ.toFm)) :
-    (∀ ν, True → ∀ d, True → ∀ t, True → ∀ b, True →
-        BF.code.{u} (BF.alls l ψ) = ZFSet.pair (natZ 2) (ZFSet.pair ν d) →
-        IsBlkUpd a ν t b → P d b) ↔
-      SatV (SeqVal a) (BF.alls l ψ).toFm := by
-  obtain ⟨ha, hdom, hnd⟩ := hg
-  simp only [BF.blockVars] at hdom hnd
-  have hndl : l.Nodup := (List.nodup_append.mp hnd).1
-  have hndψ : ψ.blockVars.Nodup := (List.nodup_append.mp hnd).2.1
-  have hdoml : ∀ i ∈ l, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a :=
-    fun i hi => hdom i (List.mem_append_left _ hi)
-  have hdomψ : ∀ i ∈ ψ.blockVars, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a :=
-    fun i hi => hdom i (List.mem_append_right _ hi)
-  rw [toFm_alls, SatV, sat_alls_iff_allD, allD_iff_forall_list]
-  constructor
-  · intro H xs hlen _
-    obtain ⟨W, hWt, hW, haW, hvW⟩ := exists_wClosed_mem a (seqOfVals xs)
-    obtain ⟨b, hbu, hseqb, -, hvalb⟩ := exists_blkUpd_W hW (isSeqA_of_isSeqV hWt ha haW) hndl
-      hdoml hlen (mem_of_seqOfVals_mem hWt hvW)
-    have hPd := H (seqOfNats.{u} l) trivial (BF.code.{u} ψ) trivial (seqOfVals xs) trivial b
-      trivial (code_alls l ψ) hbu
-    rw [← hvalb]
-    exact (hP b ⟨isSeqV_of_isSeqA hseqb, fun i hi => blkUpd_dom_mono hbu (hdomψ i hi),
-      hndψ⟩).mp hPd
-  · intro H ν _ d _ t _ b _ heq hbu
-    rw [code_alls] at heq
-    obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
-    obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-    obtain ⟨W, hWt, hW, haW, htW⟩ := exists_wClosed_mem a t
-    obtain ⟨xs, hlen, -, hseqb, hvalb⟩ :=
-      blkUpd_list hWt hW (isSeqA_of_isSeqV hWt ha haW) hndl hdoml htW hbu
-    refine (hP b ⟨isSeqV_of_isSeqA hseqb, fun i hi => blkUpd_dom_mono hbu (hdomψ i hi),
-      hndψ⟩).mpr ?_
-    rw [hvalb]
-    exact H xs hlen (fun _ _ => trivial)
-
-/-- The two halves of **Theorem 13.6** in the external universe `V`. -/
-theorem trSigPiS_correct_V (hbase : BaseCorrectV.{u}) :
-    ∀ (q : ℕ) (b : BF),
-      (BF.Sig q b → ∀ a, GoodAsnV b a →
-        (TrSigS (fun _ => True) (L Ordinal.omega0) ωZ q (BF.code.{u} b) a ↔
-          SatV (SeqVal a) b.toFm)) ∧
-      (BF.Pi q b → ∀ a, GoodAsnV b a →
-        (TrPiS (fun _ => True) (L Ordinal.omega0) ωZ q (BF.code.{u} b) a ↔
-          SatV (SeqVal a) b.toFm)) := by
-  intro q
-  induction q using Nat.strong_induction_on with
-  | _ q ih =>
-  intro b
-  match q with
-  | 0 =>
-    constructor
-    · intro hs a hg
-      cases hs with
-      | zero hφ => rw [trSigS_zero]; exact trMSig_correct_V hbase hφ hg.1
-    · intro hs a hg
-      cases hs with
-      | zero hφ => rw [trPiS_zero]; exact trMPi_correct_V hbase hφ hg.1
-  | 1 =>
-    constructor
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trSigS_one, and_iff_right (isSigCodeWD_code (BF.Sig.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2))]
-        refine trSig_step_V hg ?_
-        intro b' hg'
-        cases hψ with
-        | zero hφ => exact trMSig_correct_V hbase hφ hg'.1
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trPiS_one, and_iff_right (isPiCodeWD_code (BF.Pi.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2))]
-        refine trPi_step_V hg ?_
-        intro b' hg'
-        cases hψ with
-        | zero hφ => exact trMPi_correct_V hbase hφ hg'.1
-  | n + 2 =>
-    constructor
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trSigS_add_two, and_iff_right (isSigCodeWD_code (BF.Sig.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2))]
-        refine trSig_step_V hg ?_
-        intro b' hg'
-        exact (ih (n + 1) (by omega) _).2 hψ b' hg'
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trPiS_add_two, and_iff_right (isPiCodeWD_code (BF.Pi.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2))]
-        refine trPi_step_V hg ?_
-        intro b' hg'
-        exact (ih (n + 1) (by omega) _).1 hψ b' hg'
-
-/-- **Theorem 13.6** (Σ side) in the external universe `V`. -/
-theorem trSigS_correct_V (hbase : BaseCorrectV.{u}) :
-    ∀ (q : ℕ) (b : BF), BF.Sig q b → ∀ a : ZFSet.{u}, GoodAsnV b a →
-      (TrSigS (fun _ => True) (L Ordinal.omega0) ωZ q (BF.code b) a ↔
-        SatV (SeqVal a) b.toFm) :=
-  fun q b => (trSigPiS_correct_V hbase q b).1
-
-/-- **Theorem 13.6** (Π side) in the external universe `V`. -/
-theorem trPiS_correct_V (hbase : BaseCorrectV.{u}) :
-    ∀ (q : ℕ) (b : BF), BF.Pi q b → ∀ a : ZFSet.{u}, GoodAsnV b a →
-      (TrPiS (fun _ => True) (L Ordinal.omega0) ωZ q (BF.code b) a ↔
-        SatV (SeqVal a) b.toFm) :=
-  fun q b => (trSigPiS_correct_V hbase q b).2
+      exact ⟨fun _ => pad_trD0N_of_satV hbase hφ ha hpad hs,
+        fun h0 => absurd (natZ_injective h0) (by decide)⟩
 
 end BM4.ST

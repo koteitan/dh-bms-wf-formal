@@ -14,6 +14,13 @@ import Bm4.SetTheory.Adm
 import Bm4.SetTheory.BF
 import Bm4.SetTheory.HF
 import Bm4.SetTheory.Rel
+import Bm4.SetTheory.Subst
+import Bm4.SetTheory.SynSubst
+import Bm4.SetTheory.SynRel
+import Bm4.SetTheory.SynBF
+import Bm4.SetTheory.SynRen
+import Bm4.SetTheory.BFPad
+import Bm4.SetTheory.SynPad
 import Bm4.SetTheory.Recur
 import Bm4.SetTheory.Recursion
 import Bm4.SetTheory.Code
@@ -24,14 +31,11 @@ import Bm4.SetTheory.Blk
 import Bm4.SetTheory.Truth
 import Bm4.SetTheory.TrCorrect
 import Bm4.SetTheory.BFConv
-import Bm4.SetTheory.TV
 import Bm4.SetTheory.SatInL
 import Bm4.SetTheory.BaseOK
 import Bm4.SetTheory.AdmTrans
 import Bm4.SetTheory.Good
 import Bm4.SetTheory.LCodeEx
-import Bm4.SetTheory.AdmP
-import Bm4.SetTheory.AdmPOK
 import Bm4.SetTheory.StRel
 import Bm4.SetTheory.Stable
 import Bm4.SetTheory.Omega1
@@ -39,6 +43,7 @@ import Bm4.SetTheory.Skolem
 import Bm4.SetTheory.BlkP
 import Bm4.SetTheory.BFCodeD
 import Bm4.SetTheory.TrP
+import Bm4.SetTheory.TrPV
 import Bm4.SetTheory.StRelP
 import Bm4.SetTheory.KPAx
 import Bm4.SetTheory.KPSat

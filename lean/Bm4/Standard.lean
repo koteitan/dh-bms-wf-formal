@@ -16,31 +16,22 @@ theorem hasParent_pos {k i : ℕ} (h : HasParent A k i) : 0 < A.col i k := by
   exact lt_of_le_of_lt (Nat.zero_le _) (parent_val_lt hy)
 
 theorem hasParent_congr {B : Arr r} {k i : ℕ}
-    (hag : ∀ x ≤ i, ∀ k', A.col x k' = B.col x k') : HasParent A k i ↔ HasParent B k i :=
-  exists_congr fun y => parent_congr_iff hag y
+    (hag : ∀ x ≤ i, ∀ k', A.col x k' = B.col x k') (hA : i < A.len) (hB : i < B.len) :
+    HasParent A k i ↔ HasParent B k i :=
+  exists_congr fun y => parent_congr_iff hag hA hB y
 
-/-- In `E r`, column `0` is the `k`-parent of column `1` for every row `k`. -/
-theorem parent_E_zero_one (r : ℕ) : ∀ k, parent (E r) k 0 1 := by
+/-- In `E r`, column `0` is the `k`-parent of column `1` for every row `k < r`. -/
+theorem parent_E_zero_one (r : ℕ) : ∀ k < r, parent (E r) k 0 1 := by
   intro k
   induction k with
   | zero =>
-    exact ⟨Nat.zero_lt_one, Nat.zero_lt_one, by simp [E], fun j' h1 h2 _ => by omega⟩
+    intro hk
+    exact ⟨Nat.zero_lt_one, Nat.zero_lt_one, by simp [E], fun j' h1 h2 _ => by omega, hk,
+      by simp [E]⟩
   | succ k ih =>
-    exact ⟨Nat.zero_lt_one, anc_of_parent ih, by simp [E], fun j' h1 h2 _ => by omega⟩
-
-namespace BadRoot
-
-/-- A parent of `D_j` in `A` yields a `ParForm` witness for `pos q j`, outside the
-leading-column case. -/
-theorem parForm_of_parent_A (b : BadRoot A) {k q j y0 : ℕ}
-    (hex : ¬ (j = 0 ∧ 0 < q ∧ k < b.m)) (hy0 : parent A k y0 (b.p + j)) :
-    ∃ y, b.ParForm k y q j := by
-  rcases lt_or_ge y0 b.p with hlt | hge
-  · exact ⟨y0, Or.inr (Or.inr ⟨hex, hlt, hy0⟩)⟩
-  · refine ⟨b.pos q (y0 - b.p), Or.inl ⟨y0 - b.p, rfl, ?_⟩⟩
-    rwa [Nat.add_sub_cancel' hge]
-
-end BadRoot
+    intro hk
+    exact ⟨Nat.zero_lt_one, anc_of_parent (ih (by omega)), by simp [E],
+      fun j' h1 h2 _ => by omega, hk, by simp [E]⟩
 
 /-- **Proposition 7.1** (standardness invariant): in every array reachable from `E r`, an entry
 is positive iff the column has a parent in that row. -/
@@ -56,60 +47,52 @@ theorem standard_invariant (hA : Reachable r A) :
     have : i = 0 ∨ i = 1 := by omega
     rcases this with rfl | rfl
     · exact absurd hpos (by simp [E])
-    · exact ⟨0, parent_E_zero_one r k⟩
+    · exact ⟨0, parent_E_zero_one r k hk⟩
   | @step A N hA ih =>
     intro i hi k hk hpos
     by_cases h0 : A.len = 0
     · rw [expand_of_len_zero h0] at hi hpos ⊢
       exact ih i hi k hk hpos
     by_cases h : LastHasParent A
-    · set b := toBadRoot h with hb
-      have hcol : ∀ x k', (expand A N).col x k' = b.tA.col x k' := fun x k' => by
-        rw [expand_col h N]
-      have hconv : ∀ y, parent (expand A N) k y i ↔ parent b.tA k y i :=
-        fun y => parent_congr_iff (fun x _ k' => hcol x k') y
-      rw [hcol] at hpos
-      suffices HH : HasParent b.tA k i by
-        obtain ⟨y, hy⟩ := HH
-        exact ⟨y, (hconv y).mpr hy⟩
+    · -- `A[N]` **is** the array `Ã` of Definition 5.1, so no transport is needed
+      set b := toBadRoot h N with hb
+      rw [expand_eq h N] at hi hpos ⊢
       rcases lt_or_ge i b.p with hip | hip
       · have hiA : i < A.len := by have := b.p_lt_c; omega
         rw [b.col_lt hip] at hpos
         have := ih i hiA k hk hpos
         exact (hasParent_congr (A := A) (B := b.tA)
-          (fun x hx k' => (b.col_lt (lt_of_le_of_lt hx hip)).symm)).mp this
+          (fun x hx k' => (b.col_lt (lt_of_le_of_lt hx hip)).symm) hiA hi).mp this
       · obtain ⟨q, j, hj, rfl⟩ := b.exists_pos hip
-        suffices HP : ∃ y, b.ParForm k y q j by
-          obtain ⟨y, hy⟩ := HP
-          exact b.hasParent_tA_of_parForm k hj hy
+        have hqN : q ≤ b.N := b.le_N_of_pos_lt_tA_len hi
         rw [b.col_pos hj] at hpos
         by_cases hasc : b.Asc k j
         · rw [if_pos hasc] at hpos
           rcases Nat.eq_zero_or_pos j with rfl | hj0
           · rcases Nat.eq_zero_or_pos q with rfl | hq
-            · simp only [Nat.add_zero, zero_mul] at hpos
+            · -- `P` itself: its parent in `A` transports by (C2)
+              simp only [Nat.add_zero, zero_mul] at hpos
               have hpA : b.p < A.len := by have := b.p_lt_c; omega
-              obtain ⟨y0, hy0⟩ := ih b.p hpA k hk hpos
-              refine ⟨y0, Or.inr (Or.inr ⟨by omega, parent_lt hy0, ?_⟩)⟩
-              simpa using hy0
-            · obtain ⟨i0, _, hp0⟩ := b.exists_parent_c hasc.1.le
-              exact ⟨_, Or.inr (Or.inl ⟨rfl, hq, hasc.1, i0, rfl, hp0⟩)⟩
-          · have hanc : anc A k b.p (b.p + j) := anc_of_ancEq_of_ne hasc.2 (by omega)
-            obtain ⟨y0, hy0⟩ := exists_parent_of_valid (cand_of_anc hanc) (anc_val_lt hanc)
-            exact b.parForm_of_parent_A (by omega) hy0
-        · rw [if_neg hasc] at hpos
+              exact b.hasParent_tA_of_hasParent_A k hqN hj
+                (by simpa using ih b.p hpA k hk hpos)
+            · -- a later leading column `P⁽ᑫ⁾`: (C3) brings the parent of `C` across
+              exact b.hasParent_tA_lead hasc.1 hqN hq
+          · -- an ascending column with `j > 0`: `P ≺ᴬₖ D_j`, so `D_j` has a `k`-parent in `A`
+            have hanc : anc A k b.p (b.p + j) := anc_of_ancEq_of_ne hasc.2 (by omega)
+            exact b.hasParent_tA_of_hasParent_A k hqN hj
+              (exists_parent_of_valid hk (by have := b.lt_c_of_lt_s hj; omega)
+                (cand_of_anc hanc) (anc_val_lt hanc))
+        · -- a non-ascending column keeps its entry, so the induction hypothesis applies to `D_j`
+          rw [if_neg hasc] at hpos
           have hpjA : b.p + j < A.len := by have := b.lt_c_of_lt_s hj; omega
-          obtain ⟨y0, hy0⟩ := ih (b.p + j) hpjA k hk hpos
-          refine b.parForm_of_parent_A ?_ hy0
-          rintro ⟨rfl, _, hkm⟩
-          exact hasc (b.asc_zero hkm)
+          exact b.hasParent_tA_of_hasParent_A k hqN hj (ih (b.p + j) hpjA k hk hpos)
     · rw [expand_of_not_lastHasParent h0 h] at hi hpos ⊢
       have hi' : i < A.len := by
         have : i < A.len - 1 := hi
         omega
       have hpos' : 0 < A.col i k := hpos
       have := ih i hi' k hk hpos'
-      exact (hasParent_congr (A := A) (B := dropLast A) (fun _ _ _ => rfl)).mp this
+      exact (hasParent_congr (A := A) (B := dropLast A) (fun _ _ _ => rfl) hi' hi).mp this
 
 /-! ### Corollaries (7.2) and (7.3) -/
 

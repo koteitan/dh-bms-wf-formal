@@ -177,6 +177,88 @@ theorem consSeq_mem_of_puCl {U A a b x : ZFSet.{u}} (hU : U.IsTransitive) (hAU :
   rw [isConsSeq_unique hb hb']
   exact seq_mem_of_puCl hU hAU hω hcl hseq'
 
+/-! #### §9.1: `a_x` as a term versus the `U`-bounded quantifier
+
+Formula (9.1) of §9.1 is written with `a_x` as a *term*, with no quantifier around it, and
+the paper justifies its ∆₀-ness afterwards by remarking that `a_x` lies in `U` (Lemma 8.2).
+The Lean statements of (9.1) instead put the frame `U` into the definition itself, as
+`∃ ax ∈ U, Cons(x, a, ax) ∧ ⟨e, ax⟩ ∈ T`.  The lemmas below show that the two readings agree:
+`a_x` is unique, it always lies in `U` under condition 1 of Definition 8.3, and therefore the
+bounded existential, the unbounded existential and both universal readings are equivalent. -/
+
+/-- §9.1 introduces `a_x` as a *term*.  It is well defined: for `x ∈ A` and an `A`-valued
+finite parameter list `a` there is exactly one `b` with `Cons(x, a, b)`. -/
+theorem existsUnique_consSeq {A a : ZFSet.{u}} (ha : IsSeqA ωZ A a) {x : ZFSet.{u}}
+    (hx : x ∈ A) : ∃! b, IsConsSeq x a b := by
+  obtain ⟨b, hb, -, -, -, -⟩ := exists_consSeq ha hx
+  exact ⟨b, hb, fun _ hb' => isConsSeq_unique hb' hb⟩
+
+/-- The frame `U` may be dropped from the existential over `a_x`: by Lemma 8.2 the term `a_x`
+lies in `U` anyway.  This is the paper's own reading of (9.1). -/
+theorem consSeq_bex_iff_ex {U A a x : ZFSet.{u}} {P : ZFSet.{u} → Prop} (hU : U.IsTransitive)
+    (hAU : A ∈ U) (hω : ωZ ∈ U)
+    (hcl : ∀ y ∈ U, ∀ z ∈ U, ({y, z} : ZFSet.{u}) ∈ U ∧ ZFSet.sUnion y ∈ U)
+    (ha : IsSeqA ωZ A a) (hx : x ∈ A) :
+    (∃ ax ∈ U, IsConsSeq x a ax ∧ P ax) ↔ ∃ ax, IsConsSeq x a ax ∧ P ax := by
+  constructor
+  · rintro ⟨ax, -, hax, hP⟩
+    exact ⟨ax, hax, hP⟩
+  · rintro ⟨ax, hax, hP⟩
+    exact ⟨ax, consSeq_mem_of_puCl hU hAU hω hcl ha hx hax, hax, hP⟩
+
+/-- The existential and the universal reading of the term `a_x` agree, since `a_x` exists and
+is unique. -/
+theorem consSeq_bex_iff_forall {U A a x : ZFSet.{u}} {P : ZFSet.{u} → Prop} (hU : U.IsTransitive)
+    (hAU : A ∈ U) (hω : ωZ ∈ U)
+    (hcl : ∀ y ∈ U, ∀ z ∈ U, ({y, z} : ZFSet.{u}) ∈ U ∧ ZFSet.sUnion y ∈ U)
+    (ha : IsSeqA ωZ A a) (hx : x ∈ A) :
+    (∃ ax ∈ U, IsConsSeq x a ax ∧ P ax) ↔ ∀ ax, IsConsSeq x a ax → P ax := by
+  constructor
+  · rintro ⟨ax, -, hax, hP⟩ ax' hax'
+    exact isConsSeq_unique hax' hax ▸ hP
+  · intro H
+    obtain ⟨ax, hax, -, -, -, -⟩ := exists_consSeq ha hx
+    exact ⟨ax, consSeq_mem_of_puCl hU hAU hω hcl ha hx hax, hax, H ax hax⟩
+
+/-- The bounded existential and the bounded universal reading of the term `a_x` agree. -/
+theorem consSeq_bex_iff_ball {U A a x : ZFSet.{u}} {P : ZFSet.{u} → Prop} (hU : U.IsTransitive)
+    (hAU : A ∈ U) (hω : ωZ ∈ U)
+    (hcl : ∀ y ∈ U, ∀ z ∈ U, ({y, z} : ZFSet.{u}) ∈ U ∧ ZFSet.sUnion y ∈ U)
+    (ha : IsSeqA ωZ A a) (hx : x ∈ A) :
+    (∃ ax ∈ U, IsConsSeq x a ax ∧ P ax) ↔ ∀ ax ∈ U, IsConsSeq x a ax → P ax := by
+  constructor
+  · intro H ax _ hax
+    exact (consSeq_bex_iff_forall hU hAU hω hcl ha hx).mp H ax hax
+  · intro H
+    obtain ⟨ax, hax, -, -, -, -⟩ := exists_consSeq ha hx
+    have haxU := consSeq_mem_of_puCl hU hAU hω hcl ha hx hax
+    exact ⟨ax, haxU, hax, H ax haxU hax⟩
+
+/-- The value clause of (9.1) as the Lean definitions state it, `x ∈ b ↔ ∃ ax ∈ U, …`, is
+equivalent to the paper's own form `x ∈ b ⟺ ⟨e, a_x⟩ ∈ T` with `a_x` read as a term. -/
+theorem defVal_iff_term {U A T e a b : ZFSet.{u}}
+    (hsat : SatCode (L Ordinal.omega0) ωZ A U T) (ha : IsSeqA ωZ A a) :
+    (∀ x ∈ A, (x ∈ b ↔ ∃ ax ∈ U, IsConsSeq x a ax ∧ ZFSet.pair e ax ∈ T)) ↔
+      ∀ x ∈ A, ∀ ax, IsConsSeq x a ax → (x ∈ b ↔ ZFSet.pair e ax ∈ T) := by
+  constructor
+  · intro H x hx ax hax
+    rw [H x hx]
+    constructor
+    · rintro ⟨ax', -, hax', hT⟩
+      exact isConsSeq_unique hax' hax ▸ hT
+    · intro hT
+      exact ⟨ax, consSeq_mem_of_puCl hsat.trans hsat.A_mem hsat.w_mem hsat.pucl ha hx hax,
+        hax, hT⟩
+  · intro H x hx
+    obtain ⟨ax, hax, -, -, -, -⟩ := exists_consSeq ha hx
+    rw [H x hx ax hax]
+    constructor
+    · intro hT
+      exact ⟨ax, consSeq_mem_of_puCl hsat.trans hsat.A_mem hsat.w_mem hsat.pucl ha hx hax,
+        hax, hT⟩
+    · rintro ⟨ax', -, hax', hT⟩
+      exact isConsSeq_unique hax' hax ▸ hT
+
 /-! #### `IsConsSeq` is Δ₀ -/
 
 theorem isConsSeq_iff_bounded (x a b : ZFSet.{u}) :
@@ -250,29 +332,6 @@ theorem delta0_isConsSeq (x a b : ℕ) (hxa : x ≠ a) (hxb : x ≠ b) (hab : a 
   · intro k hk
     simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union, Finset.mem_erase] at hk ⊢
     omega
-/-! ### Definition 8.1: `PUCl` -/
-
-/-- Definition 8.1: `U` is closed under unordered pairs and unions. -/
-def PUCl (U : ZFSet.{u}) : Prop :=
-  ∀ x ∈ U, ∀ y ∈ U, ({x, y} : ZFSet.{u}) ∈ U ∧ ZFSet.sUnion x ∈ U
-
-theorem delta0_puCl (U : ℕ) : Delta0Def {U} (fun _ v => PUCl (v U)) := by
-  set m := U + 1 with hm
-  have p1 := (delta0_isUPair (m + 2) m (m + 1) (by omega) (by omega)).bex (m + 2) U (by omega)
-  have p2 := (delta0_isSUnion (m + 3) m (by omega)).bex (m + 3) U (by omega)
-  have p3 := (p1.and p2).ball (m + 1) U (by omega)
-  have p4 := p3.ball m U (by omega)
-  refine (p4.congr ?_).mono ?_
-  · intro D v _ _
-    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
-    apply forall_congr'; intro x; apply imp_congr_right; intro _
-    apply forall_congr'; intro y; apply imp_congr_right; intro _
-    apply and_congr
-    · exact ⟨fun ⟨_, hp, e⟩ => e ▸ hp, fun H => ⟨_, H, rfl⟩⟩
-    · exact ⟨fun ⟨_, hp, e⟩ => e ▸ hp, fun H => ⟨_, H, rfl⟩⟩
-  · intro k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
-      Finset.mem_union]; omega
-
 /-! ### §9.1: the input of a definable subset -/
 
 /-- §9.1 `DefInp_X(e, a)`: `e` is a formula code whose free variables are the designated
@@ -374,6 +433,19 @@ theorem isDefEnum_iff_bounded (h w U Hx Sx Dx : ZFSet.{u}) :
       obtain ⟨e', a', hk, -, -, -, hsub, hx⟩ := key _ b hb
       obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective hk
       exact ⟨hsub, hx⟩
+
+/-- Definition 9.1, condition 4, in the paper's own form (9.1): for every entry
+`⟨⟨e, a⟩, b⟩` of `Dx` and every `x ∈ Hx`, `x ∈ b ⟺ ⟨e, a_x⟩ ∈ Sx`, with `a_x` the term of
+§9.1 rather than a `U`-bounded existential. -/
+theorem IsDefEnum.val_term {U A T Dx e a b : ZFSet.{u}}
+    (hsat : SatCode (L Ordinal.omega0) ωZ A U T)
+    (hD : IsDefEnum (L Ordinal.omega0) ωZ U A T Dx)
+    (hb : ZFSet.pair (ZFSet.pair e a) b ∈ Dx) :
+    b ⊆ A ∧ ∀ x ∈ A, ∀ ax, IsConsSeq x a ax → (x ∈ b ↔ ZFSet.pair e ax ∈ T) := by
+  obtain ⟨e', -, a', -, hk, hinp⟩ := (hD.2.1 (ZFSet.pair e a)).mp ⟨b, hb⟩
+  obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective hk
+  obtain ⟨hbA, hval⟩ := hD.2.2 e a b hb
+  exact ⟨hbA, (defVal_iff_term hsat hinp.2.1).mp hval⟩
 
 set_option linter.unusedVariables false in
 theorem delta0_isDefEnum (h w U Hx Sx Dx : ℕ) (hhw : h ≠ w) (hhU : h ≠ U) (hhH : h ≠ Hx)
@@ -969,10 +1041,10 @@ theorem definableOver_of_defInp {U A T e a X : ZFSet.{u}}
     · rintro ⟨ax', hax'U, hax', hT⟩
       rw [isConsSeq_unique hax' hax] at hT
       exact ⟨hxA, (sat_congr hagree).mp
-        ((satCode_correct hsat φ ax haxseq hcov' haxU).mp hT)⟩
+        ((satCode_correct hsat φ ax haxseq hcov').mp hT)⟩
     · rintro ⟨-, hs⟩
       refine ⟨ax, haxU, hax, ?_⟩
-      rw [satCode_correct hsat φ ax haxseq hcov' haxU]
+      rw [satCode_correct hsat φ ax haxseq hcov']
       exact (sat_congr hagree).mpr hs
   · exact ⟨fun hxX => absurd (hXA hxX) hxA, fun hx => absurd hx.1 hxA⟩
 
@@ -1041,11 +1113,11 @@ theorem exists_defInp_of_definableOver {U A T X : ZFSet.{u}}
   · rintro ⟨-, hsx⟩
     refine ⟨ax, haxU, hax, ?_⟩
     have hcorr : Sat (· ∈ A) (SeqVal ax ∘ f) φ := (sat_congr hagree).mpr hsx
-    rw [satCode_correct hsat ψ ax haxseq hcov' haxU, hψ]
+    rw [satCode_correct hsat ψ ax haxseq hcov', hψ]
     exact (sat_rename hfinj).mpr hcorr
   · rintro ⟨ax', hax'U, hax', hT⟩
     rw [isConsSeq_unique hax' hax] at hT
-    have hcorr := (satCode_correct hsat ψ ax haxseq hcov' haxU).mp hT
+    have hcorr := (satCode_correct hsat ψ ax haxseq hcov').mp hT
     rw [hψ] at hcorr
     exact ⟨hxA, (sat_congr hagree).mp ((sat_rename hfinj).mp hcorr)⟩
 
@@ -1147,6 +1219,32 @@ theorem lcode_sound {η : Ordinal.{u}} {M c : ZFSet.{u}}
       rwa [hHeq] at hHξ
   exact hHf.2 _ _ _ hMH (key η le_rfl)
 
+/-- Condition 1 of Definition 9.1: the index of a code is an ordinal in the sense of `ZFSet`. -/
+theorem lcode_isOrdinal {h w η M c : ZFSet.{u}} (hcode : LCode h w η M c) : η.IsOrdinal := by
+  obtain ⟨-, -, -, -, -, ⟨hη, -⟩, -⟩ := hcode
+  exact hη
+
+/-- The index of a code is the image of the external ordinal `η.rank`; the ambient universe
+is well founded, so an internal ordinal and an external one are the same thing. -/
+theorem lcode_index_eq {h w η M c : ZFSet.{u}} (hcode : LCode h w η M c) :
+    η.rank.toZFSet = η :=
+  (lcode_isOrdinal hcode).toZFSet_rank_eq
+
+/-- **Lemma 9.2, general form**: the paper states the lemma for an arbitrary `η` satisfying
+condition 1 of Definition 9.1, that is, for an arbitrary ordinal in the sense of `ZFSet`; it is
+not restricted to indices of the form `ξ.toZFSet` for an external `ξ : Ordinal`.  By
+`lcode_index_eq` such an `η` *is* `η.rank.toZFSet`, so `lcode_sound` applies and gives
+`M = L η`, the level of the hierarchy indexed by the internal ordinal `η`. -/
+theorem lcode_sound_isOrdinal {η M c : ZFSet.{u}}
+    (hcode : LCode (L Ordinal.omega0.{u}) ωZ.{u} η M c) : M = L η.rank :=
+  lcode_sound (by rwa [lcode_index_eq hcode])
+
+/-- The external form is the special case `η = ξ.toZFSet` of `lcode_sound_isOrdinal`. -/
+theorem lcode_sound_of_toZFSet_eq {η M c : ZFSet.{u}} {ζ : Ordinal.{u}} (hζ : ζ.toZFSet = η)
+    (hcode : LCode (L Ordinal.omega0.{u}) ωZ.{u} η M c) : M = L ζ := by
+  subst hζ
+  rw [lcode_sound_isOrdinal hcode, Ordinal.rank_toZFSet]
+
 /-! ### The definable power set through a satisfaction code -/
 
 /-- `Y` is the definable power set of `A`, read off the satisfaction code `T` through the
@@ -1170,6 +1268,15 @@ theorem isDefPow_iff {U A T : ZFSet.{u}} (hsat : SatCode (L Ordinal.omega0) ωZ 
     rw [hY X, key]
   · rintro rfl X
     rw [key]
+
+/-- The value clause of `IsDefPow` in the paper's own form (9.1), with `a_x` a term. -/
+theorem IsDefPow.val_term {U A T Y X : ZFSet.{u}}
+    (hsat : SatCode (L Ordinal.omega0) ωZ A U T)
+    (hY : IsDefPow (L Ordinal.omega0) ωZ U A T Y) (hX : X ∈ Y) :
+    ∃ e ∈ L Ordinal.omega0.{u}, ∃ a ∈ U, DefInp (L Ordinal.omega0) ωZ A e a ∧ X ⊆ A ∧
+      ∀ x ∈ A, ∀ ax, IsConsSeq x a ax → (x ∈ X ↔ ZFSet.pair e ax ∈ T) := by
+  obtain ⟨e, he, a, haU, hinp, hXA, hval⟩ := (hY X).mp hX
+  exact ⟨e, he, a, haU, hinp, hXA, (defVal_iff_term hsat hinp.2.1).mp hval⟩
 
 theorem isDefPow_iff_bounded (h w U A T Y : ZFSet.{u}) :
     IsDefPow h w U A T Y ↔
@@ -1372,6 +1479,16 @@ theorem isDefEntry_iff_bounded (h w U A T p : ZFSet.{u}) :
       b, mem_upair_right _ _, rfl, rfl, hbA, hbval⟩
   · rintro ⟨q, -, k, -, q', -, b, -, rfl, rfl, hbA, hbval⟩
     exact ⟨b, rfl, hbA, hbval⟩
+
+/-- The value clause of `IsDefEntry` in the paper's own form (9.1), with `a_x` a term. -/
+theorem IsDefEntry.val_term {U A T p : ZFSet.{u}}
+    (hsat : SatCode (L Ordinal.omega0) ωZ A U T)
+    (hp : IsDefEntry (L Ordinal.omega0) ωZ U A T p) :
+    ∃ e ∈ L Ordinal.omega0.{u}, ∃ a ∈ U, DefInp (L Ordinal.omega0) ωZ A e a ∧ ∃ b,
+      p = ZFSet.pair (ZFSet.pair e a) b ∧ b ⊆ A ∧
+        ∀ x ∈ A, ∀ ax, IsConsSeq x a ax → (x ∈ b ↔ ZFSet.pair e ax ∈ T) := by
+  obtain ⟨e, he, a, haU, hinp, b, hpe, hbA, hval⟩ := hp
+  exact ⟨e, he, a, haU, hinp, b, hpe, hbA, (defVal_iff_term hsat hinp.2.1).mp hval⟩
 
 /-- `defEnum` is exactly the set of entries. -/
 theorem mem_defEnum_iff_isDefEntry {U A T : ZFSet.{u}}

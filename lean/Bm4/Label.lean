@@ -58,7 +58,8 @@ theorem stable_congr {A B : Arr r} (hlen : B.len ≤ A.len)
     (hf : Stable S A f) : Stable S B f := by
   refine ⟨fun i j hij hj => hf.mono S hij (hj.trans_le hlen), ?_⟩
   intro k hk i j hj h
-  have h' : anc A k i j := (anc_congr_iff (fun x hx k' => hcol x (hx.trans_lt hj) k') i).mpr h
+  have h' : anc A k i j :=
+    (anc_congr_iff (fun x hx k' => hcol x (hx.trans_lt hj) k') (hj.trans_le hlen) hj i).mpr h
   exact hf.rel S hk (hj.trans_le hlen) h'
 
 /-! ### Case 1 of Proposition 19.1: deletion -/
@@ -86,8 +87,15 @@ theorem Aq_len (q : ℕ) : (b.Aq q).len = b.pos (q + 1) 0 := by
 
 theorem Aq_col (q : ℕ) : (b.Aq q).col = b.tA.col := rfl
 
-theorem anc_Aq_iff (q k y x : ℕ) : anc (b.Aq q) k y x ↔ anc b.tA k y x :=
-  anc_congr_iff (A := b.Aq q) (B := b.tA) (fun _ _ _ => rfl) y
+/-- **Lemma 3.1** for `A[q] = Ã↾(p+(q+1)s)`: for positions of `A[q]` the `k`-ancestor relation
+computed in `A[q]` and in `Ã = A[N]` agree. -/
+theorem anc_Aq_iff {q : ℕ} (hq : q ≤ b.N) (k y : ℕ) {x : ℕ} (hx : x < (b.Aq q).len) :
+    anc (b.Aq q) k y x ↔ anc b.tA k y x := by
+  refine anc_congr_iff (A := b.Aq q) (B := b.tA) (fun _ _ _ => rfl) hx ?_ y
+  have hmul : (q + 1) * b.s ≤ (b.N + 1) * b.s := Nat.mul_le_mul_right _ (by omega)
+  simp only [Aq] at hx
+  simp only [tA]
+  omega
 
 /-- Invariants of the label `g` on `A[q]` during the construction of Proposition 19.1. -/
 structure Inv (f : ℕ → S.Lab) (q : ℕ) (g : ℕ → S.Lab) : Prop where
@@ -140,7 +148,8 @@ theorem pos_zero_le_pos (q i : ℕ) : b.pos q 0 ≤ b.pos q i := by unfold pos; 
 
 /-- The inductive step of Proposition 19.1. -/
 theorem inv_succ (hm : b.m < r) {f : ℕ → S.Lab} (hf : Stable S A f) (hlen : 0 < A.len)
-    {q : ℕ} {g : ℕ → S.Lab} (hg : b.Inv S f q g) : ∃ g', b.Inv S f (q + 1) g' := by
+    {q : ℕ} (hq1 : q + 1 ≤ b.N) {g : ℕ → S.Lab} (hg : b.Inv S f q g) :
+    ∃ g', b.Inv S f (q + 1) g' := by
   have hc : A.len - 1 < A.len := by omega
   have hpc : b.p < A.len - 1 := b.p_lt_c
   set α := f b.p with hα
@@ -239,17 +248,20 @@ theorem inv_succ (hm : b.m < r) {f : ℕ → S.Lab} (hf : Stable S A f) (hlen : 
     · -- ancestor relations
       intro k hk i j hj h
       rw [b.Aq_len] at hj
-      rw [b.anc_Aq_iff] at h
+      rw [b.anc_Aq_iff (q := q + 1) (by omega) k i
+        (by rw [b.Aq_len]; exact hj)] at h
       rcases b.region_cases hj with hj1 | ⟨j', hj', rfl⟩ | ⟨j', hj', rfl⟩
       · -- (a) target before B_q
         have hi1 : i < b.pos q 0 := (anc_lt h).trans hj1
         rw [g'_lo i hi1, g'_lo j hj1]
         exact hg.stable.rel S hk (by rw [b.Aq_len]; exact hj1.trans (b.pos_lt_pos_succ_zero b.s_pos))
-          ((b.anc_Aq_iff q k i j).mpr h)
+          ((b.anc_Aq_iff (by omega) k i
+            (by rw [b.Aq_len]; exact hj1.trans (b.pos_lt_pos_succ_zero b.s_pos))).mpr h)
       · -- (b) target in the old last copy B_q
         have hrel0 : S.rel k (g i) (f (b.p + j')) := by
           have := hg.stable.rel S hk (by rw [b.Aq_len]; exact b.pos_lt_pos_succ_zero hj')
-            ((b.anc_Aq_iff q k i _).mpr h)
+            ((b.anc_Aq_iff (by omega) k i
+              (by rw [b.Aq_len]; exact b.pos_lt_pos_succ_zero hj')).mpr h)
           rwa [hg.last j' hj'] at this
         rw [g'_mid j' hj']
         rcases b.anc_tA_cases k hj' h with hi1 | ⟨a, ha, i', hi', rfl⟩ | ⟨i', hi'j, rfl⟩
@@ -273,16 +285,17 @@ theorem inv_succ (hm : b.m < r) {f : ℕ → S.Lab} (hf : Stable S A f) (hlen : 
           have hi1' : i < b.pos q 0 := hi1.trans_le (b.p_le_pos q 0)
           rw [g'_lo i hi1', hg.onG i hi1]
           exact hf.rel S hk ((b.lt_c_of_lt_s hj').trans hc)
-            ((hC.2.1 k (q + 1) j' i hj' hi1).mp h)
+            ((hC.2.1 k (q + 1) hq1 j' i hj' hi1).mp h)
         · rcases Nat.lt_or_ge a q with haq | haq
           · -- (e) two or more copies back: (C6) with `b = q` gives (19.7), and prefix
             -- invariance (Lemma 3.1, here `anc_Aq_iff`) turns it into (19.8) inside `A[q]`
             have hlt : b.pos a i' < b.pos q 0 := b.pos_lt_pos_of_lt haq hi'
             rw [g'_lo _ hlt]
             have hanc : anc b.tA k (b.pos a i') (b.pos q j') :=
-              (hC.2.2.2.2.2 k a q i' j' haq hi' hj').mpr h
+              (hC.2.2.2.2.2 k a q haq hq1 i' j' hi' hj').mpr h
             have := hg.stable.rel S hk (by rw [b.Aq_len]; exact b.pos_lt_pos_succ_zero hj')
-              ((b.anc_Aq_iff q k _ _).mpr hanc)
+              ((b.anc_Aq_iff (by omega) k _
+                (by rw [b.Aq_len]; exact b.pos_lt_pos_succ_zero hj')).mpr hanc)
             rwa [hg.last j' hj'] at this
           · -- (f) adjacent copies: Corollary 6.12 supplies (19.10)
             have ha' : a = q := by omega
@@ -300,7 +313,7 @@ theorem inv_succ (hm : b.m < r) {f : ℕ → S.Lab} (hf : Stable S A f) (hlen : 
           have hi' : i' < b.s := hi'j.trans hj'
           rw [g'_hi i' hi']
           exact hf.rel S hk ((b.lt_c_of_lt_s hj').trans hc)
-            ((hC.1 k (q + 1) i' j' hi' hj').mp h)
+            ((hC.1 k (q + 1) hq1 i' j' hi' hj').mp h)
   · intro x hx
     rw [g'_lo x (hx.trans_le (b.p_le_pos q 0))]
     exact hg.onG x hx
@@ -321,13 +334,13 @@ theorem inv_succ (hm : b.m < r) {f : ℕ → S.Lab} (hf : Stable S A f) (hlen : 
       rw [g'_mid i' hi']
       exact hy'lt i' hi'
 
-theorem inv_exists (hm : b.m < r) {f : ℕ → S.Lab} (hf : Stable S A f) (hlen : 0 < A.len) (q : ℕ) :
-    ∃ g, b.Inv S f q g := by
+theorem inv_exists (hm : b.m < r) {f : ℕ → S.Lab} (hf : Stable S A f) (hlen : 0 < A.len) (q : ℕ)
+    (hq : q ≤ b.N) : ∃ g, b.Inv S f q g := by
   induction q with
   | zero => exact ⟨f, b.inv_zero S hf hlen⟩
   | succ q ih =>
-    obtain ⟨g, hg⟩ := ih
-    exact b.inv_succ S hm hf hlen hg
+    obtain ⟨g, hg⟩ := ih (by omega)
+    exact b.inv_succ S hm hf hlen hq hg
 
 end BadRoot
 
@@ -338,10 +351,10 @@ theorem descent {A : Arr r} {f : ℕ → S.Lab} (hf : Stable S A f) (h0 : 0 < A.
     ∃ g, Stable S (expand A N) g ∧ ht S (expand A N) g < ht S A f := by
   have hne : A.len ≠ 0 := by omega
   by_cases h : LastHasParent A
-  · set b := toBadRoot h with hb
+  · set b := toBadRoot h N with hb
     have hr : 0 < r := by obtain ⟨_, k, hk, _⟩ := h; omega
     have hm : b.m < r := m₀_lt hr
-    obtain ⟨g, hg⟩ := b.inv_exists S hm hf h0 N
+    obtain ⟨g, hg⟩ := b.inv_exists S hm hf h0 N le_rfl
     have heq : expand A N = b.Aq N := expand_eq h N
     refine ⟨g, heq ▸ hg.stable, ?_⟩
     unfold ht

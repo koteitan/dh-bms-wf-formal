@@ -1,6 +1,7 @@
 /-
-  Part III: relativization of a formula to a set variable `m` (all quantifiers bounded by `m`),
-  its semantics, and Δ₀-definability of relativized predicates.
+  Part III: relativization of a formula to a set variable `m` — the paper's `φ^M`, which restricts
+  the *unbounded* quantifiers of `φ` to `m` and leaves the bounded ones as they are — its
+  semantics, and Δ₀-definability of relativized predicates.
 -/
 import Bm4.SetTheory.Defin
 
@@ -10,13 +11,55 @@ namespace BM4.ST
 
 namespace Fm
 
-/-- Relativize all quantifiers to the variable `m`. -/
+/-- Syntactic test for "`φ` is the body of a bounded quantifier `∀ i ∈ j`", i.e. `φ` has the shape
+`i ∈ j → ψ` with `j ≠ i`.  Since `ball i j ψ` is by definition `all i (imp (mem i j) ψ)`, this is
+exactly the distinction the paper makes between bounded and unbounded quantifiers. -/
+def isBallBody (i : ℕ) : Fm → Bool
+  | imp (mem i' j) _ => i' == i && j != i
+  | _ => false
+
+theorem isBallBody_iff (i : ℕ) : ∀ φ : Fm,
+    isBallBody i φ = true ↔ ∃ j ψ, j ≠ i ∧ φ = imp (mem i j) ψ
+  | falsum => by simp [isBallBody]
+  | eq _ _ => by simp [isBallBody]
+  | mem _ _ => by simp [isBallBody]
+  | all _ _ => by simp [isBallBody]
+  | imp falsum _ => by simp [isBallBody]
+  | imp (eq _ _) _ => by simp [isBallBody]
+  | imp (imp _ _) _ => by simp [isBallBody]
+  | imp (all _ _) _ => by simp [isBallBody]
+  | imp (mem a b) ψ => by
+    simp only [isBallBody, Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq]
+    constructor
+    · rintro ⟨rfl, hb⟩
+      exact ⟨b, ψ, hb, rfl⟩
+    · rintro ⟨j, ψ', hj, heq⟩
+      obtain ⟨h1, -⟩ := Fm.imp.inj heq
+      obtain ⟨rfl, rfl⟩ := Fm.mem.inj h1
+      exact ⟨rfl, hj⟩
+
+/-- The paper's `φ^M`: every **unbounded** quantifier of `φ` is restricted to `m`, while a
+**bounded** quantifier `∀u ∈ a …` is left exactly as it stands. -/
 def relTo (m : ℕ) : Fm → Fm
   | falsum => falsum
   | eq i j => eq i j
   | mem i j => mem i j
   | imp φ ψ => imp (relTo m φ) (relTo m ψ)
-  | all i φ => ball i m (relTo m φ)
+  | all i φ => if isBallBody i φ then all i (relTo m φ) else ball i m (relTo m φ)
+
+/-- A bounded quantifier survives relativization untouched. -/
+theorem relTo_ball (m i j : ℕ) (hij : i ≠ j) (ψ : Fm) :
+    relTo m (ball i j ψ) = ball i j (relTo m ψ) := by
+  show (if isBallBody i (imp (mem i j) ψ) then all i (relTo m (imp (mem i j) ψ))
+      else ball i m (relTo m (imp (mem i j) ψ))) = _
+  rw [if_pos ((isBallBody_iff i _).mpr ⟨j, ψ, Ne.symm hij, rfl⟩)]
+  rfl
+
+/-- An unbounded quantifier is restricted to `m`. -/
+theorem relTo_all_of_not (m i : ℕ) (φ : Fm) (h : isBallBody i φ = false) :
+    relTo m (all i φ) = ball i m (relTo m φ) := by
+  show (if isBallBody i φ then _ else _) = _
+  rw [if_neg (by simp [h])]
 
 theorem relTo_delta0 (m : ℕ) : ∀ φ : Fm, m ∉ vars φ → IsDelta0 (relTo m φ)
   | falsum, _ => IsDelta0.falsum
@@ -27,59 +70,120 @@ theorem relTo_delta0 (m : ℕ) : ∀ φ : Fm, m ∉ vars φ → IsDelta0 (relTo 
     exact (relTo_delta0 m φ h.1).imp (relTo_delta0 m ψ h.2)
   | all i φ, h => by
     simp only [vars, Finset.mem_insert, not_or] at h
-    exact IsDelta0.ball (fun hi => h.1 hi.symm) (relTo_delta0 m φ h.2)
+    have hIH : IsDelta0 (relTo m φ) := relTo_delta0 m φ h.2
+    show IsDelta0 (if isBallBody i φ then all i (relTo m φ) else ball i m (relTo m φ))
+    split_ifs with hb
+    · obtain ⟨j, ψ, hj, rfl⟩ := (isBallBody_iff i φ).mp hb
+      simp only [relTo] at hIH ⊢
+      cases hIH with
+      | imp _ h2 => exact IsDelta0.ball (Ne.symm hj) h2
+    · exact IsDelta0.ball (fun e => h.1 e.symm) hIH
 
 theorem fv_relTo_subset (m : ℕ) : ∀ φ : Fm, fv (relTo m φ) ⊆ insert m (fv φ)
   | falsum => by simp [relTo, fv]
   | eq i j => by simp [relTo, fv]
   | mem i j => by simp [relTo, fv]
   | imp φ ψ => by
+    have h1 := fv_relTo_subset m φ
+    have h2 := fv_relTo_subset m ψ
     simp only [relTo, fv]
     intro x hx
     rcases Finset.mem_union.mp hx with hx | hx
-    · rcases Finset.mem_insert.mp (fv_relTo_subset m φ hx) with rfl | hx
+    · rcases Finset.mem_insert.mp (h1 hx) with rfl | hx'
       · simp
-      · simp [hx]
-    · rcases Finset.mem_insert.mp (fv_relTo_subset m ψ hx) with rfl | hx
+      · simp [hx']
+    · rcases Finset.mem_insert.mp (h2 hx) with rfl | hx'
       · simp
-      · simp [hx]
+      · simp [hx']
   | all i φ => by
-    simp only [relTo, fv_ball, fv]
-    intro x hx
-    rw [Finset.mem_erase] at hx
-    rcases Finset.mem_union.mp hx.2 with hx' | hx'
-    · rcases Finset.mem_insert.mp hx' with rfl | hx'
-      · exact absurd rfl hx.1
-      · rw [Finset.mem_singleton] at hx'; subst hx'; simp
-    · rcases Finset.mem_insert.mp (fv_relTo_subset m φ hx') with rfl | hx''
-      · simp
-      · simp [Finset.mem_erase, hx.1, hx'']
+    have hIH : fv (relTo m φ) ⊆ insert m (fv φ) := fv_relTo_subset m φ
+    show fv (if isBallBody i φ then all i (relTo m φ) else ball i m (relTo m φ)) ⊆
+      insert m (fv (all i φ))
+    split_ifs with hb
+    · simp only [fv]
+      intro x hx
+      rw [Finset.mem_erase] at hx
+      rcases Finset.mem_insert.mp (hIH hx.2) with rfl | hx'
+      · exact Finset.mem_insert_self _ _
+      · exact Finset.mem_insert_of_mem (Finset.mem_erase.mpr ⟨hx.1, hx'⟩)
+    · simp only [fv_ball, fv]
+      intro x hx
+      rw [Finset.mem_erase] at hx
+      rcases Finset.mem_union.mp hx.2 with hx' | hx'
+      · rcases Finset.mem_insert.mp hx' with rfl | hx''
+        · exact absurd rfl hx.1
+        · rw [Finset.mem_singleton] at hx''
+          subst hx''
+          exact Finset.mem_insert_self _ _
+      · rcases Finset.mem_insert.mp (hIH hx') with rfl | hx''
+        · exact Finset.mem_insert_self _ _
+        · exact Finset.mem_insert_of_mem (Finset.mem_erase.mpr ⟨hx.1, hx''⟩)
 
-/-- Semantics of relativization: over a domain containing `v m`'s elements, `relTo m φ` holds iff
-`φ` holds with quantifiers ranging over `v m`. -/
-theorem sat_relTo {D : ZFSet.{u} → Prop} (m : ℕ) : ∀ (φ : Fm) (v : ℕ → ZFSet.{u}), m ∉ vars φ →
-    (∀ x ∈ v m, D x) → (Sat D v (relTo m φ) ↔ Sat (· ∈ v m) v φ)
-  | falsum, _, _, _ => Iff.rfl
-  | eq i j, _, _, _ => Iff.rfl
-  | mem i j, _, _, _ => Iff.rfl
-  | imp φ ψ, v, hm, hD => by
+/-- Semantics of relativization.  Over a domain `D` containing the elements of the transitive set
+`W = v m`, and for a valuation whose free values already lie in `W`, `relTo m φ` says exactly what
+`φ` says with its quantifiers ranging over `W`.  The hypotheses on the parameters are needed
+because the bounded quantifiers of `φ` are *not* restricted to `m`. -/
+theorem sat_relTo {D : ZFSet.{u} → Prop} (m : ℕ) : ∀ (φ : Fm) (v : ℕ → ZFSet.{u}) (W : ZFSet.{u}),
+    m ∉ vars φ → v m = W → TransDom (· ∈ W) → (∀ y ∈ fv φ, v y ∈ W) → (∀ x ∈ W, D x) →
+    (Sat D v (relTo m φ) ↔ Sat (· ∈ W) v φ)
+  | falsum, _, _, _, _, _, _, _ => Iff.rfl
+  | eq i j, _, _, _, _, _, _, _ => Iff.rfl
+  | mem i j, _, _, _, _, _, _, _ => Iff.rfl
+  | imp φ ψ, v, W, hm, hvm, hT, hfv, hD => by
     simp only [vars, Finset.mem_union, not_or] at hm
+    simp only [fv, Finset.mem_union] at hfv
     simp only [relTo, sat_imp]
-    rw [sat_relTo m φ v hm.1 hD, sat_relTo m ψ v hm.2 hD]
-  | all i φ, v, hm, hD => by
+    rw [sat_relTo m φ v W hm.1 hvm hT (fun y hy => hfv y (Or.inl hy)) hD,
+      sat_relTo m ψ v W hm.2 hvm hT (fun y hy => hfv y (Or.inr hy)) hD]
+  | all i φ, v, W, hm, hvm, hT, hfv, hD => by
     simp only [vars, Finset.mem_insert, not_or] at hm
-    have him : i ≠ m := fun h => hm.1 h.symm
-    simp only [relTo, sat_all]
-    rw [sat_ball_of_ne him]
-    constructor
-    · intro H x hx
-      have := H x (hD x hx) hx
-      rw [sat_relTo m φ _ hm.2 (by rw [Function.update_of_ne him.symm]; exact hD)] at this
-      rwa [Function.update_of_ne him.symm] at this
-    · intro H x _ hx
-      rw [sat_relTo m φ _ hm.2 (by rw [Function.update_of_ne him.symm]; exact hD)]
-      rw [Function.update_of_ne him.symm]
-      exact H x hx
+    have him : i ≠ m := fun e => hm.1 e.symm
+    have hupd : ∀ x : ZFSet.{u}, Function.update v i x m = v m :=
+      fun x => Function.update_of_ne (Ne.symm him) _ _
+    have IH : ∀ (w : ℕ → ZFSet.{u}), w m = W → (∀ y ∈ fv φ, w y ∈ W) →
+        (Sat D w (relTo m φ) ↔ Sat (· ∈ W) w φ) :=
+      fun w h1 h2 => sat_relTo m φ w W hm.2 h1 hT h2 hD
+    have hupdW : ∀ x : ZFSet.{u}, Function.update v i x m = W := by
+      intro x; rw [hupd]; exact hvm
+    show Sat D v (if isBallBody i φ then all i (relTo m φ) else ball i m (relTo m φ)) ↔
+      Sat (· ∈ W) v (all i φ)
+    split_ifs with hb
+    · obtain ⟨j, ψ, hj, rfl⟩ := (isBallBody_iff i φ).mp hb
+      have hjW : v j ∈ W := by
+        refine hfv j (Finset.mem_erase.mpr ⟨hj, ?_⟩)
+        simp only [fv, Finset.mem_union, Finset.mem_insert, Finset.mem_singleton]
+        tauto
+      have hmemW : ∀ x : ZFSet.{u}, x ∈ W →
+          ∀ y ∈ fv (imp (mem i j) ψ), Function.update v i x y ∈ W := by
+        intro x hx y hy
+        by_cases hyi : y = i
+        · subst hyi; rw [Function.update_self]; exact hx
+        · rw [Function.update_of_ne hyi]
+          exact hfv y (Finset.mem_erase.mpr ⟨hyi, hy⟩)
+      simp only [sat_all]
+      constructor
+      · intro H x hx
+        exact (IH (Function.update v i x) (hupdW x) (hmemW x hx)).mp (H x (hD x hx))
+      · intro H x _
+        simp only [relTo, sat_imp, sat_mem, Function.update_self, Function.update_of_ne hj]
+        intro hxj
+        have hxW : x ∈ W := hT (v j) hjW x hxj
+        have hrel := (IH (Function.update v i x) (hupdW x) (hmemW x hxW)).mpr (H x hxW)
+        simp only [relTo, sat_imp, sat_mem, Function.update_self,
+          Function.update_of_ne hj] at hrel
+        exact hrel hxj
+    · have hmemW : ∀ x : ZFSet.{u}, x ∈ W → ∀ y ∈ fv φ, Function.update v i x y ∈ W := by
+        intro x hx y hy
+        by_cases hyi : y = i
+        · subst hyi; rw [Function.update_self]; exact hx
+        · rw [Function.update_of_ne hyi]
+          exact hfv y (Finset.mem_erase.mpr ⟨hyi, hy⟩)
+      rw [sat_ball_of_ne him, hvm, sat_all]
+      constructor
+      · intro H x hx
+        exact (IH (Function.update v i x) (hupdW x) (hmemW x hx)).mp (H x (hD x hx) hx)
+      · intro H x _ hx
+        exact (IH (Function.update v i x) (hupdW x) (hmemW x hx)).mpr (H x hx)
 
 /-- Renaming the bound variables of `φ` away from `m` (and from a finite set `avoid`), keeping
 the free variables. -/
@@ -137,57 +241,51 @@ end Fm
 
 open Fm
 
-/-- Relativized satisfaction is Δ₀-definable (in the set variable `m` and the free variables). -/
-theorem delta0Def_relTo (φ : Fm) (m : ℕ) (hm : m ∉ vars φ) :
-    Delta0Def (insert m (fv φ)) (fun _ v => Sat (· ∈ v m) v φ) := by
-  refine ⟨relTo m φ, relTo_delta0 m φ hm, fv_relTo_subset m φ, ?_⟩
-  intro D v hD hv
-  have hvm : D (v m) := hv m (by simp)
-  exact sat_relTo m φ v hm (fun x hx => hD.2 _ hvm x hx)
-
-/-- Relativized satisfaction of any formula (bound variables renamed away from `m`). -/
-theorem delta0Def_relTo' (φ : Fm) (m : ℕ) (hm : m ∉ fv φ) :
-    Delta0Def (insert m (fv φ)) (fun _ v => Sat (· ∈ v m) v φ) := by
-  obtain ⟨φ', hm', hfv, hequiv, _, _⟩ := exists_avoid φ m hm
-  have := delta0Def_relTo φ' m hm'
-  rw [hfv] at this
-  exact this.congr (fun D v _ _ => hequiv _ v)
-
 /-! ### Relativizing a definable predicate to a set variable -/
 
 /-- The relativization of a Σ̂q-definable predicate to the set named by the variable `m` is
-Δ₀-definable. -/
+Δ₀-definable: the witness is literally the relativized formula. -/
 theorem SigmaDef.relativize {q : ℕ} {s : Finset ℕ} {P : Pred.{u}} (hP : SigmaDef q s P) (m : ℕ)
     (hm : m ∉ s) :
     ∃ Q : Pred.{u}, Delta0Def (insert m s) Q ∧
-      ∀ (D : ZFSet.{u} → Prop) (v : ℕ → ZFSet.{u}), GoodDom (· ∈ v m) → ValD (· ∈ v m) s v →
-        (Q D v ↔ P (· ∈ v m) v) := by
+      ∀ (D : ZFSet.{u} → Prop) (v : ℕ → ZFSet.{u}), GoodDom D → D (v m) → GoodDom (· ∈ v m) →
+        ValD (· ∈ v m) s v → (Q D v ↔ P (· ∈ v m) v) := by
   obtain ⟨φ, hφ, hfv, hsat⟩ := hP
   have hmφ : m ∉ fv φ := fun h => hm (hfv h)
-  refine ⟨fun _ v => Sat (· ∈ v m) v φ, (delta0Def_relTo' φ m hmφ).mono ?_, ?_⟩
+  obtain ⟨φ', hm', hfv', hequiv, -, -⟩ := Fm.exists_avoid φ m hmφ
+  refine ⟨fun D v => Sat D v (relTo m φ'),
+    ⟨relTo m φ', relTo_delta0 m φ' hm', ?_, fun _ _ _ _ => Iff.rfl⟩, ?_⟩
   · intro x hx
-    simp only [Finset.mem_insert] at hx ⊢
-    rcases hx with rfl | hx
-    · exact Or.inl rfl
-    · exact Or.inr (hfv hx)
-  · intro D v hD hv
-    exact hsat _ v hD hv
+    rcases Finset.mem_insert.mp (fv_relTo_subset m φ' hx) with rfl | hx'
+    · exact Finset.mem_insert_self _ _
+    · exact Finset.mem_insert_of_mem (hfv (hfv' ▸ hx'))
+  · intro D v hD hDm hDW hv
+    have h1 : ∀ y ∈ fv φ', v y ∈ v m := fun y hy => hv y (hfv (hfv' ▸ hy))
+    have h2 : ∀ x ∈ v m, D x := fun x hx => hD.2 (v m) hDm x hx
+    show Sat D v (relTo m φ') ↔ P (· ∈ v m) v
+    rw [sat_relTo m φ' v (v m) hm' rfl hDW.2 h1 h2, hequiv (· ∈ v m) v]
+    exact hsat (· ∈ v m) v hDW hv
 
 /-- The relativization of a Π̂q-definable predicate. -/
 theorem PiDef.relativize {q : ℕ} {s : Finset ℕ} {P : Pred.{u}} (hP : PiDef q s P) (m : ℕ)
     (hm : m ∉ s) :
     ∃ Q : Pred.{u}, Delta0Def (insert m s) Q ∧
-      ∀ (D : ZFSet.{u} → Prop) (v : ℕ → ZFSet.{u}), GoodDom (· ∈ v m) → ValD (· ∈ v m) s v →
-        (Q D v ↔ P (· ∈ v m) v) := by
+      ∀ (D : ZFSet.{u} → Prop) (v : ℕ → ZFSet.{u}), GoodDom D → D (v m) → GoodDom (· ∈ v m) →
+        ValD (· ∈ v m) s v → (Q D v ↔ P (· ∈ v m) v) := by
   obtain ⟨φ, hφ, hfv, hsat⟩ := hP
   have hmφ : m ∉ fv φ := fun h => hm (hfv h)
-  refine ⟨fun _ v => Sat (· ∈ v m) v φ, (delta0Def_relTo' φ m hmφ).mono ?_, ?_⟩
+  obtain ⟨φ', hm', hfv', hequiv, -, -⟩ := Fm.exists_avoid φ m hmφ
+  refine ⟨fun D v => Sat D v (relTo m φ'),
+    ⟨relTo m φ', relTo_delta0 m φ' hm', ?_, fun _ _ _ _ => Iff.rfl⟩, ?_⟩
   · intro x hx
-    simp only [Finset.mem_insert] at hx ⊢
-    rcases hx with rfl | hx
-    · exact Or.inl rfl
-    · exact Or.inr (hfv hx)
-  · intro D v hD hv
-    exact hsat _ v hD hv
+    rcases Finset.mem_insert.mp (fv_relTo_subset m φ' hx) with rfl | hx'
+    · exact Finset.mem_insert_self _ _
+    · exact Finset.mem_insert_of_mem (hfv (hfv' ▸ hx'))
+  · intro D v hD hDm hDW hv
+    have h1 : ∀ y ∈ fv φ', v y ∈ v m := fun y hy => hv y (hfv (hfv' ▸ hy))
+    have h2 : ∀ x ∈ v m, D x := fun x hx => hD.2 (v m) hDm x hx
+    show Sat D v (relTo m φ') ↔ P (· ∈ v m) v
+    rw [sat_relTo m φ' v (v m) hm' rfl hDW.2 h1 h2, hequiv (· ∈ v m) v]
+    exact hsat (· ∈ v m) v hDW hv
 
 end BM4.ST

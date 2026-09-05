@@ -103,7 +103,7 @@ theorem lead_anc_of_earlier {h q j y : ℕ} (h5 : b.Claim5 h) (hj : j < b.s) (hj
 
 /-- `P` is a structural `k`-candidate of `D_j`: for `k = 0` because `j > 0`, for `k = k'+1`
 because of step 1 in row `k'` together with `(C1)_{k'}`. -/
-theorem cand_p_of_lead {k q j : ℕ} (hj : j < b.s) (hj0 : 0 < j)
+theorem cand_p_of_lead {k q j : ℕ} (hq : q ≤ b.N) (hj : j < b.s) (hj0 : 0 < j)
     (hlow : ∀ h, h < k → b.Claim1 h)
     (hlead : ∀ h, h < k → anc b.tA h (b.pos q 0) (b.pos q j)) :
     cand A k b.p (b.p + j) := by
@@ -111,7 +111,7 @@ theorem cand_p_of_lead {k q j : ℕ} (hj : j < b.s) (hj0 : 0 < j)
   | zero => exact cand_zero.mpr (by omega)
   | succ k' =>
     have hs := hlead k' (Nat.lt_succ_self k')
-    have hc := (hlow k' (Nat.lt_succ_self k')) q 0 j b.s_pos hj
+    have hc := (hlow k' (Nat.lt_succ_self k')) q hq 0 j b.s_pos hj
     have hA : anc A k' (b.p + 0) (b.p + j) := hc.mp hs
     exact cand_succ.mpr (by simpa using hA)
 
@@ -128,19 +128,19 @@ theorem cand_lead_of_lead {k q j : ℕ} (hj0 : 0 < j)
 
 /-- `(C3)_k` iterated: for `k < m₀`, `P^(a) ≺_k P^(q)` whenever `a < q`. -/
 theorem chain_lead {k : ℕ} (hkm : k < b.m) (h3 : b.Claim3 k) :
-    ∀ a q, a < q → anc b.tA k (b.pos a 0) (b.pos q 0) := by
+    ∀ a q, q ≤ b.N → a < q → anc b.tA k (b.pos a 0) (b.pos q 0) := by
   intro a q
   induction q with
-  | zero => intro h; omega
+  | zero => intro _ h; omega
   | succ q' ih =>
-    intro _
+    intro hqN _
     have hpc : anc A k (b.p + 0) (A.len - 1) := by simpa using b.anc_p_c hkm.le
     have hq1 : q' + 1 - 1 = q' := by omega
     have hstep : anc b.tA k (b.pos q' 0) (b.pos (q' + 1) 0) := by
-      have hh := (h3 (q' + 1) 0 (Nat.succ_pos q') b.s_pos).mpr hpc
+      have hh := (h3 (q' + 1) hqN 0 (Nat.succ_pos q') b.s_pos).mpr hpc
       rwa [hq1] at hh
     rcases Nat.lt_or_ge a q' with hlt | hge
-    · exact anc_trans (ih hlt) hstep
+    · exact anc_trans (ih (by omega) hlt) hstep
     · have haq : a = q' := by omega
       rw [haq]
       exact hstep
@@ -155,6 +155,9 @@ theorem lemma_6_6 {k : ℕ}
     b.Claim5 k := by
   intro q j y hj hj0 hp
   by_contra hcon
+  -- the target is a column of `Ã`, so the paper's range `q ≤ N` is automatic
+  have hqN : q ≤ b.N := b.le_N_of_pos_lt_tA_len (parent_target_lt hp)
+  have hkr : k < r := parent_row_lt hp
   -- the parent `Q` is neither in `G` nor in `B_q`, so it lies in an earlier copy `B_a`
   have hyp : b.p ≤ y := not_lt.mp (fun hh => hcon (Or.inl hh))
   have hnotpos : ∀ i', y ≠ b.pos q i' := fun i' hh => hcon (Or.inr ⟨i', hh⟩)
@@ -176,22 +179,24 @@ theorem lemma_6_6 {k : ℕ}
   -- Step 2
   have hnotA : ¬ anc A k b.p (b.p + j) := by
     intro hc
-    exact hno (b.pos q 0) ((h1 q 0 j b.s_pos hj).mpr (by simpa using hc)) le_rfl
+    exact hno (b.pos q 0) ((h1 q hqN 0 j b.s_pos hj).mpr (by simpa using hc)) le_rfl
   have hnasc : ¬ b.Asc k j := fun hasc => hnotA (anc_of_ancEq_of_ne hasc.2 (by omega))
   have htgt : b.tA.col (b.pos q j) k = A.col (b.p + j) k := b.col_pos_not_asc hj hnasc
   -- Step 3
   have hcandP : cand A k b.p (b.p + j) :=
-    b.cand_p_of_lead hj hj0 (fun h hh => (hlow h hh).1) hlead
+    b.cand_p_of_lead hqN hj hj0 (fun h hh => (hlow h hh).1) hlead
   have hstep3 : A.col (b.p + j) k ≤ A.col b.p k := by
     by_contra hcc
     have hc : A.col b.p k < A.col (b.p + j) k := not_le.mp hcc
     obtain ⟨y', hy'p, hy'ge⟩ :=
-      exists_parent_of_intECand (A := A) (lo := b.p) (k := k) (j := b.p) (i := b.p + j)
-        ⟨le_rfl, hcandP, hc⟩
+      exists_parent_of_intECand (A := A) (lo := b.p) (hi := b.p + j + 1) (k := k) (j := b.p)
+        (i := b.p + j)
+        ⟨le_rfl, Nat.lt_succ_of_lt (cand_lt hcandP), hcandP, hc, hkr,
+          by have := b.lt_c_of_lt_s hj; have := b.p_lt_c; omega⟩
     have hy'lt : y' < b.p + j := parent_lt hy'p
     obtain ⟨i', rfl⟩ : ∃ i', y' = b.p + i' := ⟨y' - b.p, by omega⟩
     have hi's : i' < b.s := by omega
-    refine hno (b.pos q i') ((h1 q i' j hi's hj).mpr (anc_of_parent hy'p)) ?_
+    refine hno (b.pos q i') ((h1 q hqN i' j hi's hj).mpr (anc_of_parent hy'p)) ?_
     exact b.pos_le_pos_same (Nat.zero_le i')
   -- Step 4: convexity (Lemma 4.1)
   have hancQ : anc b.tA k (b.pos a i) (b.pos q 0) := by
@@ -202,7 +207,7 @@ theorem lemma_6_6 {k : ℕ}
   rcases Nat.lt_or_ge k b.m with hkm | hkm
   · -- `k < m₀`: the chain of leading columns
     have hchain := b.chain_lead hkm (h34.1 hkm)
-    have hA : anc b.tA k (b.pos a 0) (b.pos q 0) := hchain a q ha
+    have hA : anc b.tA k (b.pos a 0) (b.pos q 0) := hchain a q hqN ha
     have hEq1 : ancEq b.tA k (b.pos a 0) (b.pos a i) := by
       rcases Nat.eq_zero_or_pos i with rfl | hi0
       · exact Or.inl rfl
@@ -210,7 +215,7 @@ theorem lemma_6_6 {k : ℕ}
     have hEq0 : ancEq b.tA k (b.pos 0 0) (b.pos a 0) := by
       rcases Nat.eq_zero_or_pos a with rfl | ha0
       · exact Or.inl rfl
-      · exact Or.inr (hchain 0 a ha0)
+      · exact Or.inr (hchain 0 a (by omega) ha0)
     have hfin : anc b.tA k (b.pos 0 0) (b.pos q j) := by
       refine anc_of_ancEq_of_ne
         (ancEq_trans (ancEq_trans hEq0 hEq1) (Or.inr (anc_of_parent hp))) ?_

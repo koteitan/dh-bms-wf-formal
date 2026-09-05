@@ -73,14 +73,13 @@ theorem WF.dual {b : BF} (h : WF b) : WF b.dual := by
   | exs hl _ ih => exact WF.alls hl ih
   | alls hl _ ih => exact WF.exs hl ih
 
-/- Strictly alternating block formulas of Σ̂q / Π̂q *shape*.  `Sig`/`Pi` record only the block
-structure — the nonempty, strictly alternating quantifier blocks in front of a Δ₀ matrix — because
-this is exactly what the arithmetized code recognizers `IsSigCodeW`/`IsPiCodeW` of `BFCode.lean`
-see (`isSigCodeW_iff`).  Definition 12.1 of the paper asks in addition that every block consist of
-pairwise distinct variables; that is `NodupBlocks` above, and the paper's Σ̂q class of block
-formulas is `Sig q b ∧ b.NodupBlocks` — the pair recognized by `IsSigCodeWD` of `BFCodeD.lean`
-and required by `GoodAsn`/`GoodAsnQ`.  Accordingly `Sig.isSigma` takes `NodupBlocks` as a
-hypothesis. -/
+/- Strictly alternating block formulas of Σ̂q / Π̂q *shape*: `Sig`/`Pi` record the block structure
+alone — the nonempty, strictly alternating quantifier blocks in front of a Δ₀ matrix.  Definition
+12.1 of the paper asks in addition that every block consist of pairwise distinct variables; that
+is `NodupBlocks` below, so the paper's Σ̂q class of block formulas is the pair
+`Sig q b ∧ b.NodupBlocks`.  That pair is what the arithmetized code recognizer `IsSigCodeWD` of
+`BFCodeD.lean` recognizes (`isSigCodeWD_iff`) and what `GoodAsnQ` requires; accordingly
+`Sig.isSigma` takes `NodupBlocks` as a hypothesis. -/
 mutual
 inductive Sig : ℕ → BF → Prop
   | zero {sg : Bool} {φ : Fm} : IsDelta0 φ → Sig 0 (delta sg φ)
@@ -112,8 +111,7 @@ theorem toFm_delta_delta0 {sg : Bool} {φ : Fm} (h : IsDelta0 φ) : IsDelta0 (de
 mutual
 /-- Definition 12.1: a `Sig q` block formula whose blocks are duplicate-free is a Σ̂q formula.
 The `NodupBlocks` hypothesis is exactly the paper's "each block consists of pairwise distinct
-variables"; `Sig`/`Pi` alone only record the block *shape*, which is what the arithmetized
-recognizers `IsSigCodeW`/`IsPiCodeW` see. -/
+variables"; `Sig`/`Pi` alone only record the block *shape*. -/
 theorem Sig.isSigma : ∀ {q : ℕ} {b : BF}, Sig q b → NodupBlocks b → IsSigma q b.toFm
   | _, _, .zero h, _ => .zero (toFm_delta_delta0 h)
   | _, _, .succ hl h, hnd => .succ _ hl hnd.1 (Pi.isPi h hnd.2)
@@ -237,10 +235,10 @@ block formulas of bounded complexity. -/
 theorem ElemF.of_elemHat {F : List BF} {q : ℕ} (hF : ∀ b ∈ F, Sig q b ∨ Pi q b)
     (hnd : ∀ b ∈ F, NodupBlocks b) {M N : ZFSet.{u}}
     (h : ElemHat q M N) : ElemF F M N := by
-  refine ⟨h.1, fun b hb v hv => ?_⟩
+  refine ⟨h.subset, fun b hb v hv => ?_⟩
   rcases hF b hb with hb' | hb'
-  · exact h.2 q le_rfl _ (Or.inl (hb'.isSigma (hnd b hb))) v hv
-  · exact h.2 q le_rfl _ (Or.inr (hb'.isPi (hnd b hb))) v hv
+  · exact h.sigma le_rfl (hb'.isSigma (hnd b hb)) hv
+  · exact h.pi le_rfl (hb'.isPi (hnd b hb)) hv
 
 /-- The block formulas of a family which start with an existential block. -/
 def IsExs : BF → Prop

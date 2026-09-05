@@ -100,6 +100,10 @@ theorem corollary_6_12 {k q i j : ℕ} (hi : i < b.s) (hj : j < b.s)
     (h : anc b.tA k (b.pos q i) (b.pos (q + 1) j)) :
     k < b.m ∧ anc A k (b.p + i) (A.len - 1) ∧ ancEq A k b.p (b.p + j) := by
   have hst := b.stage3 k
+  -- `D_j⁽ᑫ⁺¹⁾` is a column of `Ã`, so the paper's range condition `q + 1 ≤ N` holds
+  have hqN : q + 1 ≤ b.N := by
+    obtain ⟨u, -, hu⟩ := anc_last_step h
+    exact b.le_N_of_pos_lt_tA_len (parent_target_lt hu)
   -- the passing property (6.16) of Lemma 6.8, with `a = q`, `b = q+1`
   have hpass := b.passing hst.1 hst.2.1 (Nat.lt_succ_self q) hi hj h
   have hkm : k < b.m := by
@@ -109,7 +113,7 @@ theorem corollary_6_12 {k q i j : ℕ} (hi : i < b.s) (hj : j < b.s)
     omega
   refine ⟨hkm, ?_, ?_⟩
   · -- `(C3)ₖ` transports the first half
-    have hb := (b.stage1 k hkm).2.1 (q + 1) i (Nat.succ_pos q) hi
+    have hb := (b.stage1 k hkm).2.1 (q + 1) hqN i (Nat.succ_pos q) hi
     simp only [Nat.add_sub_cancel] at hb
     exact hb.mp hpass.1
   · -- `(C1)ₖ` transports the copy-internal tail
@@ -118,7 +122,7 @@ theorem corollary_6_12 {k q i j : ℕ} (hi : i < b.s) (hj : j < b.s)
       subst hj0
       exact Or.inl (by omega)
     · exact Or.inr (by
-        have := (hst.1 (q + 1) 0 j b.s_pos hj).mp hanc
+        have := (hst.1 (q + 1) hqN 0 j b.s_pos hj).mp hanc
         simpa using this)
 
 end BadRoot

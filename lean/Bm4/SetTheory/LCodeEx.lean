@@ -180,16 +180,13 @@ theorem satCode_truthSet_in_L {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {A : ZF
   have hlim := hθ.isSuccLimit
   have hT : TruthSet A ∈ L θ := truthSet_mem_L hθ hA
   have hω : ωZ.{u} ∈ L θ := hθ.omega_mem
-  obtain ⟨ζ₁, hζ₁, hA'⟩ := (mem_L_limit hlim).mp hA
-  obtain ⟨ζ₂, hζ₂, hT'⟩ := (mem_L_limit hlim).mp hT
-  obtain ⟨ζ₃, hζ₃, hω'⟩ := (mem_L_limit hlim).mp hω
-  obtain ⟨ρ, hρlim, hρge, hρlt⟩ := exists_limit_between hθ
-    (show max ζ₁ (max ζ₂ ζ₃) < θ from max_lt hζ₁ (max_lt hζ₂ hζ₃))
-  exact ⟨L ρ, L_mem_L hρlt, satCode_truthSet (L_transitive ρ)
-    (L_mono ((le_max_left _ _).trans hρge) hA')
-    (L_mono (((le_max_left _ _).trans (le_max_right _ _)).trans hρge) hT')
-    (L_mono (((le_max_right _ _).trans (le_max_right _ _)).trans hρge) hω')
-    (fun x hx y hy => ⟨pair_mem_L_of_limit hρlim hx hy, sUnion_mem_L_of_limit hρlim hx⟩)⟩
+  -- Lemma 10.4(3) applied to `{A, ω, T}`, as in the paper's proof of Lemma 10.5(1)
+  have hXL : (insert A (insert ωZ.{u} (insert (TruthSet A) (∅ : ZFSet.{u})))) ∈ L θ :=
+    insert_mem_L_of_limit hlim hA
+      (insert_mem_L_of_limit hlim hω
+        (insert_mem_L_of_limit hlim hT (empty_mem_L_of_limit hlim)))
+  obtain ⟨U, hUL, hXU, hUtrans, hUpucl⟩ := exists_puCl_superset hθ hXL
+  exact ⟨U, hUL, satCode_truthSet hUtrans (hXU (by simp)) (hXU (by simp)) (hXU (by simp)) hUpucl⟩
 
 theorem LTr_mem_L {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {ζ : Ordinal.{u}} (hζ : ζ < θ) :
     LTr ζ ∈ L θ := truthSet_mem_L hθ (L_mem_L hζ)
@@ -348,7 +345,7 @@ theorem graphBelow_LFn_mem_L {θ : Ordinal.{u}} (hθ : IsAdmissible θ) :
     obtain ⟨U₁, hU₁, U₂, hU₂, T₂, hT₂, hs⟩ := lStep_holds hθ hζ
     refine ⟨U₁, hU₁, U₂, hU₂, T₂, hT₂, ?_⟩
     simpa [upd3, stepVal, Function.update_apply] using hs
-  · intro ζ hζ y _ hy
+  · intro ζ hζ _ y _ hy
     obtain ⟨a, -, b, -, c, -, hs⟩ := hy
     refine lStep_unique hθ hζ (U₁ := a) (U₂ := b) (T₂ := c) ?_
     simpa [upd3, stepVal, Function.update_apply] using hs
@@ -709,30 +706,29 @@ theorem lcode_exists_in_L {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {ξ : Ordin
           pair_mem_graphBelow_iff.mpr ⟨ha.trans (ordinal_lt_add_one ξ), rfl⟩,
           LTr a, pair_mem_graphBelow_iff.mpr ⟨ha, rfl⟩, _, rfl,
           isDefEnum_defEnum (hsat a (ha.trans (ordinal_lt_add_one ξ)))⟩
-  -- one auxiliary set containing all the data
-  obtain ⟨γ₁, hγ₁, hH'⟩ := (mem_L_limit hlim).mp hHL
-  obtain ⟨γ₂, hγ₂, hS'⟩ := (mem_L_limit hlim).mp hSL
-  obtain ⟨γ₃, hγ₃, hD'⟩ := (mem_L_limit hlim).mp hDL
-  obtain ⟨ρ, hρlim, hρge, hρlt⟩ := exists_limit_between hθ
-    (show max (max γ₁ γ₂) (max γ₃ (δ + 1)) < θ from
-      max_lt (max_lt hγ₁ hγ₂) (max_lt hγ₃ (hlim.add_one_lt hδlt)))
-  have hδρ : δ < ρ := lt_of_lt_of_le (ordinal_lt_add_one δ)
-    (((le_max_right _ _).trans (le_max_right _ _)).trans hρge)
-  have hHρ : graphBelow L (ξ + 1) ∈ L ρ :=
-    L_mono (((le_max_left _ _).trans (le_max_left _ _)).trans hρge) hH'
-  have hSρ : graphBelow LTr ξ ∈ L ρ :=
-    L_mono (((le_max_right _ _).trans (le_max_left _ _)).trans hρge) hS'
-  have hDρ : graphBelow (fun a => defEnum (L a) (LTr a)) ξ ∈ L ρ :=
-    L_mono (((le_max_left _ _).trans (le_max_right _ _)).trans hρge) hD'
+  -- Lemma 10.4(3) applied to `{H, S, D, L δ}`, as in the paper's proof of Lemma 10.5(2):
+  -- one transitive, pair- and union-closed auxiliary set containing all the data
+  have hXL : (insert (graphBelow L (ξ + 1)) (insert (graphBelow LTr ξ)
+      (insert (graphBelow (fun a => defEnum (L a) (LTr a)) ξ)
+        (insert (L δ) (∅ : ZFSet.{u}))))) ∈ L θ :=
+    insert_mem_L_of_limit hlim hHL
+      (insert_mem_L_of_limit hlim hSL
+        (insert_mem_L_of_limit hlim hDL
+          (insert_mem_L_of_limit hlim (L_mem_L hδlt) (empty_mem_L_of_limit hlim))))
+  obtain ⟨U, hUL, hXU, hUtrans, hUpucl⟩ := exists_puCl_superset hθ hXL
+  have hHρ : graphBelow L (ξ + 1) ∈ U := hXU (by simp)
+  have hSρ : graphBelow LTr ξ ∈ U := hXU (by simp)
+  have hDρ : graphBelow (fun a => defEnum (L a) (LTr a)) ξ ∈ U := hXU (by simp)
+  have hsub : ∀ z ∈ L δ, z ∈ U := fun z hz => hUtrans.subset_of_mem (hXU (by simp)) hz
   have hsatρ : ∀ a : Ordinal.{u}, a < ξ + 1 →
-      SatCode (L Ordinal.omega0) ωZ (L a) (L ρ) (LTr a) := fun a ha =>
-    satCode_truthSet (L_transitive ρ) (L_mono hδρ.le (hstage a ha).2.1)
-      (L_mono hδρ.le (hstage a ha).2.2) (L_mono hδρ.le hωZδ) (puCl_L hρlim)
-  refine ⟨L ξ, L_mem_L hξ, fourTuple (L ρ) (graphBelow L (ξ + 1)) (graphBelow LTr ξ)
+      SatCode (L Ordinal.omega0) ωZ (L a) U (LTr a) := fun a ha =>
+    satCode_truthSet hUtrans (hsub _ (hstage a ha).2.1) (hsub _ (hstage a ha).2.2)
+      (hsub _ hωZδ) hUpucl
+  refine ⟨L ξ, L_mem_L hξ, fourTuple U (graphBelow L (ξ + 1)) (graphBelow LTr ξ)
       (graphBelow (fun a => defEnum (L a) (LTr a)) ξ), ?_,
-    L ρ, graphBelow L (ξ + 1), graphBelow LTr ξ, graphBelow (fun a => defEnum (L a) (LTr a)) ξ,
+    U, graphBelow L (ξ + 1), graphBelow LTr ξ, graphBelow (fun a => defEnum (L a) (LTr a)) ξ,
     fourCode_fourTuple _ _ _ _,
-    ⟨ZFSet.isOrdinal_toZFSet ξ, L_transitive ρ, ?_, ?_, hHρ, hSρ, hDρ, ?_, puCl_L hρlim⟩,
+    ⟨ZFSet.isOrdinal_toZFSet ξ, hUtrans, ?_, ?_, hHρ, hSρ, hDρ, ?_, hUpucl⟩,
     ⟨graphBelow_isFunc _ _, ?_, graphBelow_isFunc _ _, graphBelow_isDom _ _,
       graphBelow_isFunc _ _, graphBelow_isDom _ _, ?_⟩, ?_, ?_, ?_,
     ⟨?_, limClause_graphBelow_L ξ le_rfl⟩, ?_⟩
@@ -740,13 +736,13 @@ theorem lcode_exists_in_L {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {ξ : Ordin
     intro x hx
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hx
     rcases hx with rfl | rfl | rfl | rfl
-    · exact kpair_mem_L_of_limit hlim (natZ_mem_L hθ.omega_lt 0) (L_mem_L hρlt)
+    · exact kpair_mem_L_of_limit hlim (natZ_mem_L hθ.omega_lt 0) hUL
     · exact kpair_mem_L_of_limit hlim (natZ_mem_L hθ.omega_lt 1) hHL
     · exact kpair_mem_L_of_limit hlim (natZ_mem_L hθ.omega_lt 2) hSL
     · exact kpair_mem_L_of_limit hlim (natZ_mem_L hθ.omega_lt 3) hDL
-  · exact (toZFSet_mem_L_iff ρ ξ).mpr (hξδ.trans hδρ)
-  · exact L_mem_L (hξδ.trans hδρ)
-  · exact L_mono hδρ.le hωZδ
+  · exact hsub _ ((toZFSet_mem_L_iff δ ξ).mpr hξδ)
+  · exact hsub _ (L_mem_L hξδ)
+  · exact hsub _ hωZδ
   · rw [← Ordinal.toZFSet_add_one]; exact graphBelow_isDom _ _
   · have h0 : ZFSet.pair (0 : Ordinal.{u}).toZFSet (L (0 : Ordinal.{u})) ∈
         graphBelow L (ξ + 1) :=

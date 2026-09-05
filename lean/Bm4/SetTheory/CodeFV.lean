@@ -16,6 +16,11 @@
   No flag is carried on the sequence entries: every entry is already a "x not free" code, and the
   `∀x φ` step calls the ordinary code recognizer `IsCodeW` on the immediate subterm, which is
   bounded by `e` itself.
+
+  The last two sections of this file give the paper's general schema (8.3) instead — the pair of a
+  derivation sequence `s` and a computation sequence `τ` obeying local rules `Trace_F` supplied as
+  parameters (`TraceW`, `GraphW`), its Δ₀-definability once for all operations (`delta0_traceW`,
+  `delta0_graphW`) — and exhibit `NotFreeW` as one instance of it (`notFreeW_iff_graphW`).
 -/
 import Bm4.SetTheory.BFCode
 
@@ -425,18 +430,6 @@ theorem isFunc_seqOfAux (l : List ZFSet.{u}) : IsFunc (seqOfAux 0 l) := by
     rw [hy] at hy'
     exact Option.some.inj hy'
 
-theorem isDom_seqOfAux (l : List ZFSet.{u}) : IsDom (seqOfAux 0 l) (natZ l.length) := by
-  intro a
-  rw [mem_natZ_iff]
-  constructor
-  · rintro ⟨p, hp, rfl⟩
-    obtain ⟨y, hy⟩ : ∃ y, l[p]? = some y := ⟨l[p], List.getElem?_eq_some_iff.mpr ⟨hp, rfl⟩⟩
-    exact ⟨y, mem_seqOfAux.mpr ⟨p, y, hy, by simp⟩⟩
-  · rintro ⟨b, hb⟩
-    obtain ⟨n, y, hy, hp⟩ := mem_seqOfAux.mp hb
-    rw [ZFSet.pair_inj] at hp
-    exact ⟨n, (List.getElem?_eq_some_iff.mp hy).1, by simpa using hp.1⟩
-
 theorem nfDerSeqW_seqOf_derNF (x : ℕ) (φ : Fm) (hfv : x ∉ Fm.fv φ) :
     NFDerSeqW (L Ordinal.omega0) ωZ (natZ x) (seqOfAux 0 (Fm.derNF.{u} x φ)) := by
   refine ⟨isFunc_seqOfAux _,
@@ -483,5 +476,526 @@ theorem notFreeW_iff (k : ℕ) (e : ZFSet.{u}) :
       exact ψ.code_mem_Lω
     · exact mem_seqOfAux.mpr
         ⟨(Fm.derNF.{u} k φ).length - 1, φ.code, Fm.derNF_last.{u} k φ, by simp⟩
+
+/-! ### The general graph schema (8.3)
+
+The paper gives the graph of every syntactic operation `F` by the single schema
+
+```
+G_F(ē, d)  :⇔  ∃ s ∈ ω ∃ τ ∈ ω (DerSeq(ē, s) ∧ Trace_F(ē, d, s, τ))
+```
+
+where `s` is a derivation sequence of the input code and `τ` is a *computation sequence* running
+alongside `s`: it attaches a value to every position of `s`, the value at a node being determined
+by the node's tag, its immediate subcodes and the values already computed for its children.  That
+local rule is the only part that depends on `F`, so it is taken here as a parameter: `A` is the
+rule at atomic nodes, `I` at `imp` nodes and `U` at `all` nodes.  `p` is the parameter block of
+`ē` besides the principal input.  `TraceW` and `GraphW` below are that schema, and
+`delta0_traceW` / `delta0_graphW` are the paper's conclusion that the schema is Δ₀ as soon as the
+local rules are — one proof for all operations, rather than one per predicate. -/
+
+/-- `τ` is a computation sequence for the local rules `A`, `I`, `U` alongside the derivation
+sequence `s`: a function attaching to each position of `s` a value licensed by the rule for that
+node's tag from the values at its children. -/
+def TraceW (w : ZFSet.{u})
+    (A : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop)
+    (I : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop)
+    (U : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop)
+    (p s t : ZFSet.{u}) : Prop :=
+  IsFunc t ∧
+  ∀ k e, ZFSet.pair k e ∈ s → ∃ v, ZFSet.pair k v ∈ t ∧
+    (A w p e v ∨
+     (∃ k₁ ∈ k, ∃ k₂ ∈ k, ∃ e₁ e₂ v₁ v₂, ZFSet.pair k₁ e₁ ∈ s ∧ ZFSet.pair k₂ e₂ ∈ s ∧
+        ZFSet.pair k₁ v₁ ∈ t ∧ ZFSet.pair k₂ v₂ ∈ t ∧
+        e = ZFSet.pair (natZ 3) (ZFSet.pair e₁ e₂) ∧ I w p v₁ v₂ v) ∨
+     (∃ k₁ ∈ k, ∃ e₁ v₁, ∃ i ∈ w, ZFSet.pair k₁ e₁ ∈ s ∧ ZFSet.pair k₁ v₁ ∈ t ∧
+        e = ZFSet.pair (natZ 4) (ZFSet.pair i e₁) ∧ U w p i v₁ v))
+
+/-- The graph (8.3) of the operation whose local rules are `A`, `I`, `U`: the input `e` and the
+output `d` sit at the same position of a derivation sequence `s` and of a computation sequence
+`τ` for it, both lying in `h` (intended `h = L ω`, `w = ωZ`). -/
+def GraphW (h w : ZFSet.{u})
+    (A : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop)
+    (I : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop)
+    (U : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop)
+    (p e d : ZFSet.{u}) : Prop :=
+  ∃ s ∈ h, ∃ t ∈ h, DerSeqW w s ∧ TraceW w A I U p s t ∧
+    ∃ k, ZFSet.pair k e ∈ s ∧ ZFSet.pair k d ∈ t
+
+variable {A : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop}
+  {I : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop}
+  {U : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop}
+
+/-- The schema is Δ₀ as soon as the three local rules are: this is (8.3)'s conclusion, proved once
+for every syntactic operation instead of once per predicate. -/
+theorem delta0_traceW (w p s t : ℕ)
+    (hA : ∀ a b c d : ℕ, a ≠ b → a ≠ c → a ≠ d → b ≠ c → b ≠ d → c ≠ d →
+      Delta0Def.{u} {a, b, c, d} (fun _ v => A (v a) (v b) (v c) (v d)))
+    (hI : ∀ a b c d e : ℕ, a ≠ b → a ≠ c → a ≠ d → a ≠ e → b ≠ c → b ≠ d → b ≠ e →
+        c ≠ d → c ≠ e → d ≠ e →
+      Delta0Def.{u} {a, b, c, d, e} (fun _ v => I (v a) (v b) (v c) (v d) (v e)))
+    (hU : ∀ a b c d e : ℕ, a ≠ b → a ≠ c → a ≠ d → a ≠ e → b ≠ c → b ≠ d → b ≠ e →
+        c ≠ d → c ≠ e → d ≠ e →
+      Delta0Def.{u} {a, b, c, d, e} (fun _ v => U (v a) (v b) (v c) (v d) (v e)))
+    (hwp : w ≠ p) (hws : w ≠ s) (hwt : w ≠ t) (hps : p ≠ s) (hpt : p ≠ t) (hst : s ≠ t) :
+    Delta0Def.{u} {w, p, s, t} (fun _ v => TraceW (v w) A I U (v p) (v s) (v t)) := by
+  set m := w + p + s + t + 1 with hm
+  -- P := m+1, Q := m+2, k := m+3, Q' := m+4, e := m+5; P₀ := m+6, Q₀ := m+7, v := m+8
+  -- k₁ := m+9, k₂ := m+10; P₁ := m+11, Q₁ := m+12, e₁ := m+13; P₂ := m+14, Q₂ := m+15, e₂ := m+16
+  -- R₁ := m+17, S₁ := m+18, v₁ := m+19; R₂ := m+20, S₂ := m+21, v₂ := m+22; i := m+23
+  have i0 := (delta0_isKPair (m + 11) (m + 9) (m + 13) (by omega) (by omega)).and
+    ((delta0_isKPair (m + 14) (m + 10) (m + 16) (by omega) (by omega)).and
+      ((delta0_isKPair (m + 17) (m + 9) (m + 19) (by omega) (by omega)).and
+        ((delta0_isKPair (m + 20) (m + 10) (m + 22) (by omega) (by omega)).and
+          ((delta0_tagPair 3 (m + 5) (m + 13) (m + 16) (by omega) (by omega)).and
+            (hI w p (m + 19) (m + 22) (m + 8) (by omega) (by omega) (by omega) (by omega)
+              (by omega) (by omega) (by omega) (by omega) (by omega) (by omega))))))
+  have i1 := i0.bex (m + 22) (m + 21) (by omega)
+  have i2 := i1.bex (m + 21) (m + 20) (by omega)
+  have i3 := i2.bex (m + 20) t (by omega)
+  have i4 := i3.bex (m + 19) (m + 18) (by omega)
+  have i5 := i4.bex (m + 18) (m + 17) (by omega)
+  have i6 := i5.bex (m + 17) t (by omega)
+  have i7 := i6.bex (m + 16) (m + 15) (by omega)
+  have i8 := i7.bex (m + 15) (m + 14) (by omega)
+  have i9 := i8.bex (m + 14) s (by omega)
+  have i10 := i9.bex (m + 13) (m + 12) (by omega)
+  have i11 := i10.bex (m + 12) (m + 11) (by omega)
+  have i12 := i11.bex (m + 11) s (by omega)
+  have i13 := i12.bex (m + 10) (m + 3) (by omega)
+  have iC := i13.bex (m + 9) (m + 3) (by omega)
+  have a0 := (delta0_isKPair (m + 11) (m + 9) (m + 13) (by omega) (by omega)).and
+    ((delta0_isKPair (m + 17) (m + 9) (m + 19) (by omega) (by omega)).and
+      ((delta0_tagPair 4 (m + 5) (m + 23) (m + 13) (by omega) (by omega)).and
+        (hU w p (m + 23) (m + 19) (m + 8) (by omega) (by omega) (by omega) (by omega)
+          (by omega) (by omega) (by omega) (by omega) (by omega) (by omega))))
+  have a1 := a0.bex (m + 23) w (by omega)
+  have a2 := a1.bex (m + 19) (m + 18) (by omega)
+  have a3 := a2.bex (m + 18) (m + 17) (by omega)
+  have a4 := a3.bex (m + 17) t (by omega)
+  have a5 := a4.bex (m + 13) (m + 12) (by omega)
+  have a6 := a5.bex (m + 12) (m + 11) (by omega)
+  have a7 := a6.bex (m + 11) s (by omega)
+  have aC := a7.bex (m + 9) (m + 3) (by omega)
+  have b0 := (delta0_isKPair (m + 6) (m + 3) (m + 8) (by omega) (by omega)).and
+    ((hA w p (m + 5) (m + 8) (by omega) (by omega) (by omega) (by omega) (by omega)
+      (by omega)).or (iC.or aC))
+  have b1 := b0.bex (m + 8) (m + 7) (by omega)
+  have b2 := b1.bex (m + 7) (m + 6) (by omega)
+  have b3 := b2.bex (m + 6) t (by omega)
+  have c0 := (delta0_isKPair (m + 1) (m + 3) (m + 5) (by omega) (by omega)).imp b3
+  have c1 := c0.ball (m + 5) (m + 4) (by omega)
+  have c2 := c1.ball (m + 4) (m + 1) (by omega)
+  have c3 := c2.ball (m + 3) (m + 2) (by omega)
+  have c4 := c3.ball (m + 2) (m + 1) (by omega)
+  have h2 := c4.ball (m + 1) s (by omega)
+  refine (((delta0_isFunc t).and h2).congr ?_).of_eq ?_
+  · intro D v _ _
+    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
+    unfold TraceW
+    refine and_congr Iff.rfl ?_
+    rw [forall_pair_mem_iff_bounded]
+    apply forall_congr'; intro P; apply imp_congr_right; intro _
+    apply forall_congr'; intro Q; apply imp_congr_right; intro _
+    apply forall_congr'; intro k; apply imp_congr_right; intro _
+    apply forall_congr'; intro Q'; apply imp_congr_right; intro _
+    apply forall_congr'; intro e; apply imp_congr_right; intro _
+    apply imp_congr_right; intro _
+    rw [exists_pair_mem_iff_bounded]
+    apply exists_congr; intro P₀; apply and_congr_right; intro _
+    apply exists_congr; intro Q₀; apply and_congr_right; intro _
+    apply exists_congr; intro v₀; apply and_congr_right; intro _
+    apply and_congr_right; intro _
+    apply or_congr Iff.rfl
+    apply or_congr
+    · apply exists_congr; intro k₁; apply and_congr_right; intro _
+      apply exists_congr; intro k₂; apply and_congr_right; intro _
+      constructor
+      · rintro ⟨P₁, hP₁, Q₁, -, e₁, -, P₂, hP₂, Q₂, -, e₂, -, R₁, hR₁, S₁, -, v₁, -,
+          R₂, hR₂, S₂, -, v₂, -, rfl, rfl, rfl, rfl, H, HI⟩
+        exact ⟨e₁, e₂, v₁, v₂, hP₁, hP₂, hR₁, hR₂, H, HI⟩
+      · rintro ⟨e₁, e₂, v₁, v₂, h₁, h₂, g₁, g₂, H, HI⟩
+        exact ⟨_, h₁, _, upair_mem_pair _ _, e₁, mem_upair_right _ _,
+          _, h₂, _, upair_mem_pair _ _, e₂, mem_upair_right _ _,
+          _, g₁, _, upair_mem_pair _ _, v₁, mem_upair_right _ _,
+          _, g₂, _, upair_mem_pair _ _, v₂, mem_upair_right _ _, rfl, rfl, rfl, rfl, H, HI⟩
+    · apply exists_congr; intro k₁; apply and_congr_right; intro _
+      constructor
+      · rintro ⟨P₁, hP₁, Q₁, -, e₁, -, R₁, hR₁, S₁, -, v₁, -, i, hi, rfl, rfl, H, HU⟩
+        exact ⟨e₁, v₁, i, hi, hP₁, hR₁, H, HU⟩
+      · rintro ⟨e₁, v₁, i, hi, h₁, g₁, H, HU⟩
+        exact ⟨_, h₁, _, upair_mem_pair _ _, e₁, mem_upair_right _ _,
+          _, g₁, _, upair_mem_pair _ _, v₁, mem_upair_right _ _, i, hi, rfl, rfl, H, HU⟩
+  · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
+      Finset.mem_union]; omega
+
+/-- (8.3): the graph of a syntactic operation with Δ₀ local rules is Δ₀. -/
+theorem delta0_graphW (h w p e d : ℕ)
+    (hA : ∀ a b c d : ℕ, a ≠ b → a ≠ c → a ≠ d → b ≠ c → b ≠ d → c ≠ d →
+      Delta0Def.{u} {a, b, c, d} (fun _ v => A (v a) (v b) (v c) (v d)))
+    (hI : ∀ a b c d e : ℕ, a ≠ b → a ≠ c → a ≠ d → a ≠ e → b ≠ c → b ≠ d → b ≠ e →
+        c ≠ d → c ≠ e → d ≠ e →
+      Delta0Def.{u} {a, b, c, d, e} (fun _ v => I (v a) (v b) (v c) (v d) (v e)))
+    (hU : ∀ a b c d e : ℕ, a ≠ b → a ≠ c → a ≠ d → a ≠ e → b ≠ c → b ≠ d → b ≠ e →
+        c ≠ d → c ≠ e → d ≠ e →
+      Delta0Def.{u} {a, b, c, d, e} (fun _ v => U (v a) (v b) (v c) (v d) (v e)))
+    (hhw : h ≠ w) (hhp : h ≠ p) (hhe : h ≠ e) (hhd : h ≠ d)
+    (hwp : w ≠ p) (hwe : w ≠ e) (hwd : w ≠ d) (hpe : p ≠ e) (hpd : p ≠ d) (hed : e ≠ d) :
+    Delta0Def.{u} {h, w, p, e, d} (fun _ v => GraphW (v h) (v w) A I U (v p) (v e) (v d)) := by
+  set m := h + w + p + e + d + 1 with hm
+  -- s := m, t := m+1, P := m+2, Q := m+3, k := m+4, P' := m+5
+  have k0 := (delta0_isKPair (m + 2) (m + 4) e (by omega) (by omega)).and
+    ((delta0_isKPair (m + 5) (m + 4) d (by omega) (by omega)).bex (m + 5) (m + 1) (by omega))
+  have k1 := k0.bex (m + 4) (m + 3) (by omega)
+  have k2 := k1.bex (m + 3) (m + 2) (by omega)
+  have k3 := k2.bex (m + 2) m (by omega)
+  have dd := (delta0_derSeqW w m (by omega)).and
+    ((delta0_traceW (A := A) (I := I) (U := U) w p m (m + 1) hA hI hU (by omega) (by omega)
+      (by omega) (by omega) (by omega) (by omega)).and k3)
+  have hh1 := dd.bex (m + 1) h (by omega)
+  have hh := hh1.bex m h (by omega)
+  refine (hh.congr ?_).of_eq ?_
+  · intro D v _ _
+    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
+    unfold GraphW
+    apply exists_congr; intro s; apply and_congr_right; intro _
+    apply exists_congr; intro t; apply and_congr_right; intro _
+    apply and_congr_right; intro _
+    apply and_congr_right; intro _
+    constructor
+    · rintro ⟨P, hP, Q, -, k, -, rfl, P', hP', rfl⟩
+      exact ⟨k, hP, hP'⟩
+    · rintro ⟨k, hk, hk'⟩
+      exact ⟨_, hk, _, singleton_mem_pair _ _, k, ZFSet.mem_singleton.mpr rfl, rfl,
+        _, hk', rfl⟩
+  · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
+      Finset.mem_union]; omega
+
+/-! ### `NotFreeW` as an instance of the schema
+
+`NotFreeW` above is a hand-written derivation-sequence recognizer specialised to "`x` is not
+free".  Here the same predicate is obtained from the general schema instead: three local rules
+compute the truth value of "`x` does not occur free" at every node of the syntax tree,
+`delta0_graphW` yields the Δ₀-definability of the resulting graph, and `notFreeW_iff_graphW`
+identifies that graph with `NotFreeW`. -/
+
+/-- Two-valued output: `natZ 1` for "yes", `natZ 0` for "no". -/
+def Bl (P : Prop) (v : ZFSet.{u}) : Prop := (P ∧ v = natZ 1) ∨ (¬ P ∧ v = natZ 0)
+
+/-- Local rule at an atomic node: the value records whether the atom avoids `x`. -/
+def nfAtomR (w x e v : ZFSet.{u}) : Prop := IsAtomicCodeW w e ∧ Bl (NFAtomicW w x e) v
+
+/-- Local rule at an `imp` node: the conjunction of the children's values. -/
+def nfImpR (_w _x v₁ v₂ v : ZFSet.{u}) : Prop := Bl (v₁ = natZ 1 ∧ v₂ = natZ 1) v
+
+/-- Local rule at an `all` node: true when the bound variable is `x`, else the child's value. -/
+def nfAllR (_w x i v₁ v : ZFSet.{u}) : Prop := Bl (i = x ∨ v₁ = natZ 1) v
+
+theorem delta0_bl {s : Finset ℕ} {P : Pred.{u}} (hP : Delta0Def.{u} s P) (d : ℕ) :
+    Delta0Def.{u} (s ∪ {d}) (fun D v => Bl (P D v) (v d)) :=
+  (((hP.and (delta0_isNatZ 1 d)).or (hP.not.and (delta0_isNatZ 0 d))).congr
+    (fun _ _ _ _ => Iff.rfl)).of_eq (Finset.union_self _)
+
+theorem delta0_nfAtomR (a b c d : ℕ) (hab : a ≠ b) (hac : a ≠ c) (had : a ≠ d)
+    (hbc : b ≠ c) (hbd : b ≠ d) (hcd : c ≠ d) :
+    Delta0Def.{u} {a, b, c, d} (fun _ v => nfAtomR (v a) (v b) (v c) (v d)) :=
+  (((delta0_isAtomicCodeW a c hac).and
+    (delta0_bl (delta0_nfAtomicW a b c hab hac hbc) d)).congr (fun _ _ _ _ => Iff.rfl)).mono
+    (by intro k hk; simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union] at hk ⊢
+        tauto)
+
+theorem delta0_nfImpR (a b c d e : ℕ) :
+    Delta0Def.{u} {a, b, c, d, e} (fun _ v => nfImpR (v a) (v b) (v c) (v d) (v e)) :=
+  ((delta0_bl ((delta0_isNatZ 1 c).and (delta0_isNatZ 1 d)) e).congr
+    (fun _ _ _ _ => Iff.rfl)).mono
+    (by intro k hk; simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union] at hk ⊢
+        tauto)
+
+theorem delta0_nfAllR (a b c d e : ℕ) :
+    Delta0Def.{u} {a, b, c, d, e} (fun _ v => nfAllR (v a) (v b) (v c) (v d) (v e)) :=
+  ((delta0_bl ((Delta0Def.eq.{u} c b).or (delta0_isNatZ 1 d)) e).congr
+    (fun _ _ _ _ => Iff.rfl)).mono
+    (by intro k hk; simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union] at hk ⊢
+        tauto)
+
+/-- (8.3) for "the variable `x` does not occur free", read off the general schema. -/
+theorem delta0_graphW_nf (h w p e d : ℕ)
+    (hhw : h ≠ w) (hhp : h ≠ p) (hhe : h ≠ e) (hhd : h ≠ d)
+    (hwp : w ≠ p) (hwe : w ≠ e) (hwd : w ≠ d) (hpe : p ≠ e) (hpd : p ≠ d) (hed : e ≠ d) :
+    Delta0Def.{u} {h, w, p, e, d}
+      (fun _ v => GraphW (v h) (v w) nfAtomR nfImpR nfAllR (v p) (v e) (v d)) :=
+  delta0_graphW h w p e d
+    (fun a b c d hab hac had hbc hbd hcd => delta0_nfAtomR a b c d hab hac had hbc hbd hcd)
+    (fun a b c d e _ _ _ _ _ _ _ _ _ _ => delta0_nfImpR a b c d e)
+    (fun a b c d e _ _ _ _ _ _ _ _ _ _ => delta0_nfAllR a b c d e)
+    hhw hhp hhe hhd hwp hwe hwd hpe hpd hed
+
+/-! ### Correctness of the instance -/
+
+theorem fv_imp_not_mem_iff (x : ℕ) (φ ψ : Fm) :
+    x ∉ Fm.fv (Fm.imp φ ψ) ↔ (x ∉ Fm.fv φ ∧ x ∉ Fm.fv ψ) := by
+  simp only [Fm.fv, Finset.mem_union, not_or]
+
+theorem fv_all_not_mem_iff (x i : ℕ) (φ : Fm) :
+    x ∉ Fm.fv (Fm.all i φ) ↔ (i = x ∨ x ∉ Fm.fv φ) := by
+  simp only [Fm.fv]
+  constructor
+  · intro h
+    by_cases hx : i = x
+    · exact Or.inl hx
+    · exact Or.inr (fun hmem => h (Finset.mem_erase.mpr ⟨fun hh => hx hh.symm, hmem⟩))
+  · rintro (rfl | h) hmem
+    · exact (Finset.mem_erase.mp hmem).1 rfl
+    · exact h (Finset.mem_erase.mp hmem).2
+
+theorem nfAtomicW_eq_iff (x i j : ℕ) :
+    NFAtomicW ωZ.{u} (natZ x) (Fm.code (Fm.eq i j)) ↔ x ∉ Fm.fv (Fm.eq i j) := by
+  simp only [Fm.fv, Finset.mem_insert, Finset.mem_singleton, not_or]
+  constructor
+  · rintro (H | ⟨a, -, b, -, hax, hbx, H | H⟩)
+    · rw [Fm.code, ZFSet.pair_inj] at H
+      exact absurd H.1 (natZ_ne (by decide))
+    · rw [Fm.code, ZFSet.pair_inj, ZFSet.pair_inj] at H
+      obtain ⟨-, rfl, rfl⟩ := H
+      exact ⟨fun hh => hax (by rw [hh]), fun hh => hbx (by rw [hh])⟩
+    · rw [Fm.code, ZFSet.pair_inj] at H
+      exact absurd H.1 (natZ_ne (by decide))
+  · rintro ⟨hi, hj⟩
+    exact Or.inr ⟨natZ i, natZ_mem_ωZ i, natZ j, natZ_mem_ωZ j,
+      fun hh => hi (natZ_injective hh).symm, fun hh => hj (natZ_injective hh).symm, Or.inl rfl⟩
+
+theorem nfAtomicW_mem_iff (x i j : ℕ) :
+    NFAtomicW ωZ.{u} (natZ x) (Fm.code (Fm.mem i j)) ↔ x ∉ Fm.fv (Fm.mem i j) := by
+  simp only [Fm.fv, Finset.mem_insert, Finset.mem_singleton, not_or]
+  constructor
+  · rintro (H | ⟨a, -, b, -, hax, hbx, H | H⟩)
+    · rw [Fm.code, ZFSet.pair_inj] at H
+      exact absurd H.1 (natZ_ne (by decide))
+    · rw [Fm.code, ZFSet.pair_inj] at H
+      exact absurd H.1 (natZ_ne (by decide))
+    · rw [Fm.code, ZFSet.pair_inj, ZFSet.pair_inj] at H
+      obtain ⟨-, rfl, rfl⟩ := H
+      exact ⟨fun hh => hax (by rw [hh]), fun hh => hbx (by rw [hh])⟩
+  · rintro ⟨hi, hj⟩
+    exact Or.inr ⟨natZ i, natZ_mem_ωZ i, natZ j, natZ_mem_ωZ j,
+      fun hh => hi (natZ_injective hh).symm, fun hh => hj (natZ_injective hh).symm, Or.inr rfl⟩
+
+/-- On an atomic code, `NFAtomicW` decides "`x` does not occur free". -/
+theorem isAtomicCodeW_nf (x : ℕ) {e : ZFSet.{u}} (h : IsAtomicCodeW ωZ e) :
+    ∃ φ : Fm, e = φ.code ∧ (NFAtomicW ωZ (natZ x) e ↔ x ∉ Fm.fv φ) := by
+  rcases h with rfl | ⟨i, hi, j, hj, H⟩
+  · exact ⟨Fm.falsum, rfl, iff_of_true (Or.inl rfl) (by simp [Fm.fv])⟩
+  · obtain ⟨i', rfl⟩ := mem_ωZ_iff.mp hi
+    obtain ⟨j', rfl⟩ := mem_ωZ_iff.mp hj
+    rcases H with rfl | rfl
+    · exact ⟨Fm.eq i' j', rfl, nfAtomicW_eq_iff x i' j'⟩
+    · exact ⟨Fm.mem i' j', rfl, nfAtomicW_mem_iff x i' j'⟩
+
+theorem nfCodeShape_imp {ψ : Fm} {a b : ZFSet.{u}}
+    (h : ψ.code = ZFSet.pair (natZ 3) (ZFSet.pair a b)) :
+    ∃ ψ₁ ψ₂ : Fm, ψ = Fm.imp ψ₁ ψ₂ ∧ a = ψ₁.code ∧ b = ψ₂.code := by
+  cases ψ with
+  | falsum => rw [Fm.code, ZFSet.pair_inj] at h; exact absurd h.1 (natZ_ne (by decide))
+  | eq i j => rw [Fm.code, ZFSet.pair_inj] at h; exact absurd h.1 (natZ_ne (by decide))
+  | mem i j => rw [Fm.code, ZFSet.pair_inj] at h; exact absurd h.1 (natZ_ne (by decide))
+  | imp φ₁ φ₂ =>
+    rw [Fm.code, ZFSet.pair_inj, ZFSet.pair_inj] at h
+    exact ⟨φ₁, φ₂, rfl, h.2.1.symm, h.2.2.symm⟩
+  | all i φ₁ => rw [Fm.code, ZFSet.pair_inj] at h; exact absurd h.1 (natZ_ne (by decide))
+
+theorem nfCodeShape_all {ψ : Fm} {i : ℕ} {a : ZFSet.{u}}
+    (h : ψ.code = ZFSet.pair (natZ 4) (ZFSet.pair (natZ i) a)) :
+    ∃ ψ₁ : Fm, ψ = Fm.all i ψ₁ ∧ a = ψ₁.code := by
+  cases ψ with
+  | falsum => rw [Fm.code, ZFSet.pair_inj] at h; exact absurd h.1 (natZ_ne (by decide))
+  | eq i j => rw [Fm.code, ZFSet.pair_inj] at h; exact absurd h.1 (natZ_ne (by decide))
+  | mem i j => rw [Fm.code, ZFSet.pair_inj] at h; exact absurd h.1 (natZ_ne (by decide))
+  | imp φ₁ φ₂ => rw [Fm.code, ZFSet.pair_inj] at h; exact absurd h.1 (natZ_ne (by decide))
+  | all j φ₁ =>
+    rw [Fm.code, ZFSet.pair_inj, ZFSet.pair_inj] at h
+    obtain ⟨-, hij, hab⟩ := h
+    obtain rfl := natZ_injective hij
+    exact ⟨φ₁, rfl, hab.symm⟩
+
+/-! ### Soundness of the instance -/
+
+theorem traceW_nf_entry {x : ℕ} {s t : ZFSet.{u}}
+    (ht : TraceW ωZ nfAtomR nfImpR nfAllR (natZ x) s t) :
+    ∀ n e v, ZFSet.pair (natZ n) e ∈ s → ZFSet.pair (natZ n) v ∈ t →
+      ∃ φ : Fm, e = φ.code ∧ (v = natZ 1 ↔ x ∉ Fm.fv φ) := by
+  intro n
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+  intro e v he hv
+  obtain ⟨v', hv', H⟩ := ht.2 _ _ he
+  obtain rfl : v' = v := ht.1.2 _ _ _ hv' hv
+  rcases H with ⟨hat, hbl⟩ | ⟨k₁, hk₁, k₂, hk₂, e₁, e₂, v₁, v₂, h₁, h₂, g₁, g₂, rfl, HI⟩ |
+    ⟨k₁, hk₁, e₁, v₁, i, hi, h₁, g₁, rfl, HU⟩
+  · obtain ⟨φ, rfl, hiff⟩ := isAtomicCodeW_nf x hat
+    refine ⟨φ, rfl, ?_⟩
+    rcases hbl with ⟨hp, rfl⟩ | ⟨hp, rfl⟩
+    · exact iff_of_true rfl (hiff.mp hp)
+    · exact iff_of_false (fun hh => absurd hh (natZ_ne (by decide)))
+        (fun hfv => hp (hiff.mpr hfv))
+  · obtain ⟨n₁, hn₁, rfl⟩ := mem_natZ_iff.mp hk₁
+    obtain ⟨n₂, hn₂, rfl⟩ := mem_natZ_iff.mp hk₂
+    obtain ⟨φ₁, rfl, hf₁⟩ := ih n₁ hn₁ e₁ v₁ h₁ g₁
+    obtain ⟨φ₂, rfl, hf₂⟩ := ih n₂ hn₂ e₂ v₂ h₂ g₂
+    refine ⟨Fm.imp φ₁ φ₂, rfl, ?_⟩
+    rw [fv_imp_not_mem_iff]
+    rcases HI with ⟨hp, rfl⟩ | ⟨hp, rfl⟩
+    · exact iff_of_true rfl ⟨hf₁.mp hp.1, hf₂.mp hp.2⟩
+    · exact iff_of_false (fun hh => absurd hh (natZ_ne (by decide)))
+        (fun hfv => hp ⟨hf₁.mpr hfv.1, hf₂.mpr hfv.2⟩)
+  · obtain ⟨n₁, hn₁, rfl⟩ := mem_natZ_iff.mp hk₁
+    obtain ⟨φ₁, rfl, hf₁⟩ := ih n₁ hn₁ e₁ v₁ h₁ g₁
+    obtain ⟨i', rfl⟩ := mem_ωZ_iff.mp hi
+    refine ⟨Fm.all i' φ₁, rfl, ?_⟩
+    rw [fv_all_not_mem_iff]
+    rcases HU with ⟨hp, rfl⟩ | ⟨hp, rfl⟩
+    · refine iff_of_true rfl ?_
+      rcases hp with hp | hp
+      · exact Or.inl (natZ_injective hp)
+      · exact Or.inr (hf₁.mp hp)
+    · refine iff_of_false (fun hh => absurd hh (natZ_ne (by decide))) (fun hfv => hp ?_)
+      rcases hfv with rfl | hfv
+      · exact Or.inl rfl
+      · exact Or.inr (hf₁.mpr hfv)
+
+/-! ### Completeness of the instance -/
+
+open Classical in
+/-- The value the rules attach to a code: `natZ 1` when it codes a formula avoiding `x`. -/
+noncomputable def nfValZ (x : ℕ) (y : ZFSet.{u}) : ZFSet.{u} :=
+  if ∃ φ : Fm, y = φ.code ∧ x ∉ Fm.fv φ then natZ 1 else natZ 0
+
+theorem nfValZ_eq_zero_or_one (x : ℕ) (y : ZFSet.{u}) :
+    nfValZ.{u} x y = natZ 1 ∨ nfValZ.{u} x y = natZ 0 := by
+  unfold nfValZ; split_ifs with h
+  · exact Or.inl rfl
+  · exact Or.inr rfl
+
+theorem nfValZ_code_eq_one_iff (x : ℕ) (φ : Fm) :
+    nfValZ.{u} x φ.code = natZ 1 ↔ x ∉ Fm.fv φ := by
+  unfold nfValZ; split_ifs with h
+  · refine iff_of_true rfl ?_
+    obtain ⟨ψ, hψ, hfv⟩ := h
+    rwa [Fm.code_injective hψ]
+  · exact iff_of_false (fun hh => absurd hh (natZ_ne (by decide))) (fun hfv => h ⟨φ, rfl, hfv⟩)
+
+theorem nfValZ_mem_Lω (x : ℕ) (y : ZFSet.{u}) : nfValZ.{u} x y ∈ L Ordinal.omega0 := by
+  rcases nfValZ_eq_zero_or_one x y with h | h <;> rw [h]
+  · exact natZ_mem_Lω 1
+  · exact natZ_mem_Lω 0
+
+/-- The computation sequence of a formula for the rules of "`x` not free": the values run
+alongside the ordinary derivation sequence `Fm.der φ` of `Code.lean`. -/
+theorem traceW_nf_seqOf_der (x : ℕ) (φ : Fm) :
+    TraceW ωZ.{u} nfAtomR nfImpR nfAllR (natZ x)
+      (seqOfAux 0 (Fm.der.{u} φ)) (seqOfAux 0 ((Fm.der.{u} φ).map (nfValZ x))) := by
+  refine ⟨isFunc_seqOfAux _, ?_⟩
+  intro k e hke
+  obtain ⟨n, z, hz, hp⟩ := mem_seqOfAux.mp hke
+  rw [ZFSet.pair_inj] at hp
+  obtain ⟨hk, he⟩ := hp
+  subst hk
+  subst he
+  have key : ∀ (m : ℕ) (y : ZFSet.{u}), (Fm.der.{u} φ)[m]? = some y →
+      ZFSet.pair (natZ m) (nfValZ x y) ∈ seqOfAux 0 ((Fm.der.{u} φ).map (nfValZ x)) := by
+    intro m y hy
+    exact mem_seqOfAux.mpr ⟨m, nfValZ x y, by simp [hy], by simp⟩
+  have keys : ∀ (m : ℕ) (y : ZFSet.{u}), (Fm.der.{u} φ)[m]? = some y →
+      ZFSet.pair (natZ m) y ∈ seqOfAux 0 (Fm.der.{u} φ) := by
+    intro m y hy
+    exact mem_seqOfAux.mpr ⟨m, y, hy, by simp⟩
+  refine ⟨nfValZ x e, by simpa using key n e hz, ?_⟩
+  have hzmem : e ∈ Fm.der.{u} φ := by
+    obtain ⟨hn, hh⟩ := List.getElem?_eq_some_iff.mp hz
+    exact hh ▸ List.getElem_mem hn
+  obtain ⟨y, hy, H⟩ := Fm.der_good.{u} φ n e hz
+  rw [hz] at hy
+  obtain rfl := Option.some.inj hy
+  rcases H with H | ⟨n₁, hn₁, n₂, hn₂, y₁, y₂, hy₁, hy₂, H⟩ | ⟨n₁, hn₁, y₁, i, hy₁, H⟩
+  · refine Or.inl ⟨H, ?_⟩
+    obtain ⟨φ₀, hz0, hiff⟩ := isAtomicCodeW_nf x H
+    by_cases hp : NFAtomicW ωZ.{u} (natZ x) e
+    · refine Or.inl ⟨hp, ?_⟩
+      rw [hz0]
+      exact (nfValZ_code_eq_one_iff x φ₀).mpr (hiff.mp hp)
+    · refine Or.inr ⟨hp, ?_⟩
+      rcases nfValZ_eq_zero_or_one x e with h1 | h0
+      · exact absurd (hiff.mpr ((nfValZ_code_eq_one_iff x φ₀).mp (hz0 ▸ h1))) hp
+      · exact h0
+  · obtain ⟨ψ, rfl⟩ := Fm.mem_der.{u} φ e hzmem
+    obtain ⟨ψ₁, ψ₂, rfl, rfl, rfl⟩ := nfCodeShape_imp H
+    refine Or.inr (Or.inl ⟨natZ n₁, by simpa [natZ_mem_natZ_iff] using hn₁, natZ n₂,
+      by simpa [natZ_mem_natZ_iff] using hn₂, ψ₁.code, ψ₂.code, nfValZ x ψ₁.code,
+      nfValZ x ψ₂.code, keys _ _ hy₁, keys _ _ hy₂, key _ _ hy₁, key _ _ hy₂, rfl, ?_⟩)
+    by_cases hc : nfValZ.{u} x ψ₁.code = natZ 1 ∧ nfValZ.{u} x ψ₂.code = natZ 1
+    · refine Or.inl ⟨hc, (nfValZ_code_eq_one_iff x (Fm.imp ψ₁ ψ₂)).mpr ?_⟩
+      rw [fv_imp_not_mem_iff]
+      exact ⟨(nfValZ_code_eq_one_iff x ψ₁).mp hc.1, (nfValZ_code_eq_one_iff x ψ₂).mp hc.2⟩
+    · refine Or.inr ⟨hc, ?_⟩
+      rcases nfValZ_eq_zero_or_one x (Fm.imp ψ₁ ψ₂).code with h1 | h0
+      · refine absurd ?_ hc
+        have := (nfValZ_code_eq_one_iff x (Fm.imp ψ₁ ψ₂)).mp h1
+        rw [fv_imp_not_mem_iff] at this
+        exact ⟨(nfValZ_code_eq_one_iff x ψ₁).mpr this.1, (nfValZ_code_eq_one_iff x ψ₂).mpr this.2⟩
+      · exact h0
+  · obtain ⟨ψ, rfl⟩ := Fm.mem_der.{u} φ e hzmem
+    obtain ⟨ψ₁, rfl, rfl⟩ := nfCodeShape_all H
+    refine Or.inr (Or.inr ⟨natZ n₁, by simpa [natZ_mem_natZ_iff] using hn₁, ψ₁.code,
+      nfValZ x ψ₁.code, natZ i, natZ_mem_ωZ i, keys _ _ hy₁, key _ _ hy₁, rfl, ?_⟩)
+    by_cases hc : natZ.{u} i = natZ x ∨ nfValZ.{u} x ψ₁.code = natZ 1
+    · refine Or.inl ⟨hc, (nfValZ_code_eq_one_iff x (Fm.all i ψ₁)).mpr ?_⟩
+      rw [fv_all_not_mem_iff]
+      rcases hc with hc | hc
+      · exact Or.inl (natZ_injective hc)
+      · exact Or.inr ((nfValZ_code_eq_one_iff x ψ₁).mp hc)
+    · refine Or.inr ⟨hc, ?_⟩
+      rcases nfValZ_eq_zero_or_one x (Fm.all i ψ₁).code with h1 | h0
+      · refine absurd ?_ hc
+        have := (nfValZ_code_eq_one_iff x (Fm.all i ψ₁)).mp h1
+        rw [fv_all_not_mem_iff] at this
+        rcases this with rfl | this
+        · exact Or.inl rfl
+        · exact Or.inr ((nfValZ_code_eq_one_iff x ψ₁).mpr this)
+      · exact h0
+
+/-- Correctness of the instance: the graph (8.3) built from the three local rules recognises
+exactly the codes of formulas in which `x` does not occur free. -/
+theorem graphW_nf_iff (x : ℕ) (e : ZFSet.{u}) :
+    GraphW (L Ordinal.omega0) ωZ nfAtomR nfImpR nfAllR (natZ.{u} x) e (natZ 1) ↔
+      ∃ φ : Fm, e = φ.code ∧ x ∉ Fm.fv φ := by
+  constructor
+  · rintro ⟨s, -, t, -, hs, ht, k, hke, hkd⟩
+    obtain ⟨d, hd, hdom⟩ := hs.2.1
+    have hkd' : k ∈ d := (hdom k).mpr ⟨e, hke⟩
+    obtain ⟨M, rfl⟩ := mem_ωZ_iff.mp hd
+    obtain ⟨p, -, rfl⟩ := mem_natZ_iff.mp hkd'
+    obtain ⟨φ, rfl, hiff⟩ := traceW_nf_entry ht p e (natZ 1) hke hkd
+    exact ⟨φ, rfl, hiff.mp rfl⟩
+  · rintro ⟨φ, rfl, hfv⟩
+    refine ⟨seqOfAux 0 (Fm.der.{u} φ), ?_, seqOfAux 0 ((Fm.der.{u} φ).map (nfValZ x)), ?_,
+      derSeqW_seqOf_der φ, traceW_nf_seqOf_der x φ, natZ ((Fm.der.{u} φ).length - 1), ?_, ?_⟩
+    · apply seqOfAux_mem_Lω
+      intro y hy
+      obtain ⟨ψ, rfl⟩ := Fm.mem_der.{u} φ y hy
+      exact ψ.code_mem_Lω
+    · apply seqOfAux_mem_Lω
+      intro y hy
+      obtain ⟨z, -, rfl⟩ := List.mem_map.mp hy
+      exact nfValZ_mem_Lω x z
+    · exact mem_seqOfAux.mpr ⟨(Fm.der.{u} φ).length - 1, φ.code, Fm.der_last.{u} φ, by simp⟩
+    · refine mem_seqOfAux.mpr ⟨(Fm.der.{u} φ).length - 1, natZ 1, ?_, by simp⟩
+      rw [List.getElem?_map, Fm.der_last.{u} φ]
+      exact congrArg some ((nfValZ_code_eq_one_iff x φ).mpr hfv)
+
+/-- U-19: the hand-written recognizer `NotFreeW` is the instance of the general schema (8.3) at
+the local rules `nfAtomR`, `nfImpR`, `nfAllR`. -/
+theorem notFreeW_iff_graphW (x : ℕ) (e : ZFSet.{u}) :
+    NotFreeW (L Ordinal.omega0) ωZ (natZ.{u} x) e ↔
+      GraphW (L Ordinal.omega0) ωZ nfAtomR nfImpR nfAllR (natZ.{u} x) e (natZ 1) :=
+  (notFreeW_iff x e).trans (graphW_nf_iff x e).symm
 
 end BM4.ST

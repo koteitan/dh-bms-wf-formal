@@ -3,8 +3,7 @@
 
   Given a bad root `p` which is the `m`-parent of the last column `c`, the array
   `G ⌢ B₀ ⌢ B₁ ⌢ ⋯` has columns `tildeCol A p m s`. This file fixes that data (`BadRoot`),
-  its positions `pos q j`, its entries, and the shapes `ParForm` / `AncForm` in which the
-  parent and ancestor relations of the expanded array are described.
+  its positions `pos q j`, and its entries.
 
   The two proofs of the copy lemma itself live elsewhere: `Bm4/CopyPaper/` follows the paper
   (six claims (C1)–(C6) and the assembly of Proposition 6.11), and `Bm4/CopyClosed.lean` is
@@ -18,11 +17,13 @@ namespace BM4
 
 variable {r : ℕ}
 
-/-- Data of a bad root: `p` is the `m`-parent of the last column `c = A.len - 1`.
+/-- Data of Definition 5.1: `p` is the `m`-parent of the last column `c = A.len - 1`, and
+`N + 1` is the number of copies of the bad part.
 No maximality of `m` is needed for the structural copy lemma. -/
 structure BadRoot (A : Arr r) where
   p : ℕ
   m : ℕ
+  N : ℕ
   hpar : parent A m p (A.len - 1)
 
 namespace BadRoot
@@ -41,9 +42,12 @@ def Δ (k : ℕ) : ℕ := A.col (A.len - 1) k - A.col b.p k
 /-- Column `j` of the bad part ascends in row `k`. -/
 def Asc (k j : ℕ) : Prop := k < b.m ∧ ancEq A k b.p (b.p + j)
 
-/-- The expanded array (with infinitely many copies; the length is irrelevant for
-parents and ancestors). -/
-noncomputable def tA : Arr r := ⟨0, tildeCol A b.p b.m b.s⟩
+/-- `Ã = A[N] = G ⌢ B₀ ⌢ ⋯ ⌢ B_N`, of length `p + (N+1)s` (Definition 5.1).
+The column function is defined at every position; only the positions below the length are
+columns of `Ã`. -/
+noncomputable def tA : Arr r := ⟨b.p + (b.N + 1) * b.s, tildeCol A b.p b.m b.s⟩
+
+theorem tA_len : b.tA.len = b.p + (b.N + 1) * b.s := rfl
 
 theorem p_lt_c : b.p < A.len - 1 := parent_lt b.hpar
 
@@ -139,18 +143,42 @@ theorem col_prefix {x k : ℕ} (hx : x < A.len - 1) : b.tA.col x k = A.col x k :
     rw [col_pos b hj]
     simp [pos_zero]
 
+/-- Positions of the common prefix `G ⌢ B₀` are positions of `Ã`. -/
+theorem lt_tA_len_of_lt_c {x : ℕ} (hx : x < A.len - 1) : x < b.tA.len := by
+  have h1 := b.p_add_s
+  have h2 : 1 * b.s ≤ (b.N + 1) * b.s := Nat.mul_le_mul_right _ (by omega)
+  simp only [tA]
+  omega
+
+/-- `D_j⁽ᑫ⁾` is a column of `Ã` exactly when `q ≤ N` and `j < s`. -/
+theorem pos_lt_tA_len {q j : ℕ} (hq : q ≤ b.N) (hj : j < b.s) : b.pos q j < b.tA.len := by
+  have : (q + 1) * b.s ≤ (b.N + 1) * b.s := Nat.mul_le_mul_right _ (by omega)
+  simp only [tA, pos]
+  nlinarith
+
+/-- Conversely, a position of `Ã` lies in one of the copies `B₀,…,B_N`. -/
+theorem le_N_of_pos_lt_tA_len {q j : ℕ} (h : b.pos q j < b.tA.len) : q ≤ b.N := by
+  by_contra hcon
+  push Not at hcon
+  have hle : (b.N + 1) * b.s ≤ q * b.s := Nat.mul_le_mul_right _ hcon
+  simp only [tA, pos] at h
+  omega
+
 /-- Prefix invariance for the expanded array (Lemma 3.1). -/
 theorem anc_tA_prefix {x : ℕ} (hx : x < A.len - 1) (k y : ℕ) :
     anc b.tA k y x ↔ anc A k y x :=
-  anc_congr_iff (fun x' hx' k' => b.col_prefix (lt_of_le_of_lt hx' hx)) y
+  anc_congr_iff (fun x' hx' k' => b.col_prefix (lt_of_le_of_lt hx' hx))
+    (b.lt_tA_len_of_lt_c hx) (by omega) y
 
 theorem parent_tA_prefix {x : ℕ} (hx : x < A.len - 1) (k y : ℕ) :
     parent b.tA k y x ↔ parent A k y x :=
-  parent_congr_iff (fun x' hx' k' => b.col_prefix (lt_of_le_of_lt hx' hx)) y
+  parent_congr_iff (fun x' hx' k' => b.col_prefix (lt_of_le_of_lt hx' hx))
+    (b.lt_tA_len_of_lt_c hx) (by omega) y
 
 theorem cand_tA_prefix {x : ℕ} (hx : x < A.len - 1) (k y : ℕ) :
     cand b.tA k y x ↔ cand A k y x :=
-  cand_congr_iff (fun x' hx' k' => b.col_prefix (lt_of_le_of_lt hx' hx)) y
+  cand_congr_iff (fun x' hx' k' => b.col_prefix (lt_of_le_of_lt hx' hx))
+    (b.lt_tA_len_of_lt_c hx) (by omega) y
 
 /-! ### Ascension and convexity -/
 
@@ -207,6 +235,18 @@ theorem lt_pos_cases {q j y : ℕ} (hj : j < b.s) (hy : y < b.pos q j) :
     · subst heq; exact Or.inr ⟨rfl, (b.pos_lt_pos_same_iff).mp hy⟩
     · exact absurd hy (not_lt.mpr (b.pos_lt_pos_of_lt hgt hj).le)
 
+/-- Position of a `k`-ancestor of `D_j⁽ᑫ⁾` in the expanded array: it lies in the common prefix
+`G`, in a strictly earlier copy, or strictly earlier in the same copy.  Only `y ≺ₖ x → y < x`
+is used, so this is the positional content of `lt_pos_cases`; it is the case split the paper
+performs in Remark 19.2. -/
+theorem anc_tA_cases (k : ℕ) {q j y : ℕ} (hj : j < b.s) (h : anc b.tA k y (b.pos q j)) :
+    y < b.p ∨ (∃ a < q, ∃ i < b.s, y = b.pos a i) ∨ ∃ i < j, y = b.pos q i := by
+  rcases b.lt_pos_cases hj (anc_lt h) with hy | ⟨a, i, hi, rfl, hcase⟩
+  · exact Or.inl hy
+  · rcases hcase with hlt | ⟨rfl, hij⟩
+    · exact Or.inr (Or.inl ⟨a, hlt, i, hi, rfl⟩)
+    · exact Or.inr (Or.inr ⟨i, hij, rfl⟩)
+
 /-- Positions strictly between `pos q i` and `pos q j` (with `j < s`) are `pos q i'`, `i < i' < j`. -/
 theorem between_same_copy {q i j y : ℕ} (hj : j < b.s) (h1 : b.pos q i < y) (h2 : y < b.pos q j) :
     ∃ i', y = b.pos q i' ∧ i < i' ∧ i' < j := by
@@ -244,23 +284,6 @@ theorem lt_c_of_lt_s {i : ℕ} (hi : i < b.s) : b.p + i < A.len - 1 := by
 
 theorem lt_s_of_lt_c {i : ℕ} (hi : b.p + i < A.len - 1) : i < b.s := by
   have := b.p_add_s; omega
-
-/-! ### The shapes of the parent and ancestor relations -/
-
-/-- Closed form of the `k`-parent relation of `pos q j` in the expanded array. -/
-def ParForm (k y q j : ℕ) : Prop :=
-  (∃ i, y = b.pos q i ∧ parent A k (b.p + i) (b.p + j)) ∨
-  (j = 0 ∧ 0 < q ∧ k < b.m ∧ ∃ i, y = b.pos (q - 1) i ∧ parent A k (b.p + i) (A.len - 1)) ∨
-  (¬ (j = 0 ∧ 0 < q ∧ k < b.m) ∧ y < b.p ∧ parent A k y (b.p + j))
-
-/-- Closed form of the `k`-ancestor relation of `pos q j` in the expanded array. -/
-def AncForm (k y q j : ℕ) : Prop :=
-  (∃ i, y = b.pos q i ∧ anc A k (b.p + i) (b.p + j)) ∨
-  (k < b.m ∧ ancEq A k b.p (b.p + j) ∧
-    ∃ a < q, ∃ i, y = b.pos a i ∧ anc A k (b.p + i) (A.len - 1)) ∨
-  (y < b.p ∧ anc A k y (b.p + j))
-
-
 
 /-! ### Values -/
 

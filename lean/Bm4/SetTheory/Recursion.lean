@@ -202,11 +202,11 @@ theorem exsIn_and_of_indep {b : ZFSet.{u}} {A B : (ℕ → ZFSet.{u}) → Prop}
 
 /-- Uniqueness of partial approximations: any partial approximation up to `ξ` (with witnesses in
 `L θ`) is the graph of `F` below `ξ`, provided `F` is the unique solution of the step relation. -/
-theorem PA_unique {θ : Ordinal.{u}} {Q : Pred.{u}} {l : List ℕ} {v : ℕ → ZFSet.{u}}
+theorem PA_unique {θ β : Ordinal.{u}} {Q : Pred.{u}} {l : List ℕ} {v : ℕ → ZFSet.{u}}
     {F : Ordinal.{u} → ZFSet.{u}}
-    (huniq : ∀ ξ < θ, graphBelow F ξ ∈ L θ → ∀ y ∈ L θ,
+    (huniq : ∀ ξ < β, graphBelow F ξ ∈ L θ → ∀ y ∈ L θ,
       ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) y) → y = F ξ) :
-    ∀ ξ < θ, ∀ g b, (∀ z ∈ b, z ∈ L θ) → PA Q l (· ∈ L θ) v ξ.toZFSet g b → g = graphBelow F ξ := by
+    ∀ ξ < β, ∀ g b, (∀ z ∈ b, z ∈ L θ) → PA Q l (· ∈ L θ) v ξ.toZFSet g b → g = graphBelow F ξ := by
   intro ξ
   induction ξ using Ordinal.induction with
   | _ ξ ih =>
@@ -311,19 +311,22 @@ theorem PA_congr_v {Q : Pred.{u}} {s : Finset ℕ} {l : List ℕ} {D : ZFSet.{u}
   · rw [upd3_apply_of_ge hk3, upd3_apply_of_ge hk3]
     exact hvv' k hk hkl hk3
 
-/-- **Σ1-recursion in an admissible `L θ`** (Lemma 10.3, semantic form). Let `F` be a function
-on ordinals which, at every `ξ < θ`, is the unique solution `y` of a Σ1 step relation
-`∃ l, Q(ξ, graph F below ξ, y)` (matrix `Q` Δ₀, witnesses in `L θ`), with `F ξ ∈ L θ` whenever
-the graph below `ξ` is in `L θ`. Then all graphs below `ξ < θ` lie in `L θ`. -/
-theorem sigma1_recursion {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset ℕ} {Q : Pred.{u}}
+/-- **Σ1-recursion in an admissible `L θ`** (Lemma 10.3, semantic form), with the paper's bound:
+the step and uniqueness hypotheses are only required *below the bound* `β` (in the paper,
+`β = η + 1`, i.e. `ξ ≤ η`), not at every `ξ < θ`.  Let `F` be a function on ordinals which, at
+every `ξ < β`, is the unique solution `y` of a Σ1 step relation `∃ l, Q(ξ, graph F below ξ, y)`
+(matrix `Q` Δ₀, witnesses in `L θ`), with `F ξ ∈ L θ` whenever the graph below `ξ` is in `L θ`.
+Then all graphs below `ξ ≤ β` lie in `L θ`. -/
+theorem sigma1_recursion_le {θ β : Ordinal.{u}} (hθ : IsAdmissible θ) (hβ : β < θ)
+    {s : Finset ℕ} {Q : Pred.{u}}
     (hQ : Delta0Def s Q) (l : List ℕ) (hl0 : 0 ∉ l) (hl1 : 1 ∉ l) (hl2 : 2 ∉ l)
     {v : ℕ → ZFSet.{u}} (hv : ∀ k ∈ s, k ∉ l → 3 ≤ k → v k ∈ L θ)
     (F : Ordinal.{u} → ZFSet.{u})
-    (hstep : ∀ ξ < θ, graphBelow F ξ ∈ L θ → F ξ ∈ L θ ∧
+    (hstep : ∀ ξ < β, graphBelow F ξ ∈ L θ → F ξ ∈ L θ ∧
       ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) (F ξ)))
-    (huniq : ∀ ξ < θ, ∀ y ∈ L θ,
+    (huniq : ∀ ξ < β, graphBelow F ξ ∈ L θ → ∀ y ∈ L θ,
       ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) y) → y = F ξ) :
-    ∀ ξ < θ, graphBelow F ξ ∈ L θ := by
+    ∀ ξ ≤ β, graphBelow F ξ ∈ L θ := by
   set W := L θ with hW
   have hT := L_transitive θ
   have hlim := hθ.isSuccLimit
@@ -352,9 +355,10 @@ theorem sigma1_recursion {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset 
     · unfold upd3; interval_cases k <;> simp
     · rw [upd3_apply_of_ge hk3, upd3_apply_of_ge hk3]; exact hvv₀ k hkl hk3
   -- the step and uniqueness hypotheses for `Q'` and `v₀`
-  have hstep' : ∀ ξ < θ, graphBelow F ξ ∈ W → F ξ ∈ W ∧
+  have hstep' : ∀ ξ < β, graphBelow F ξ ∈ W → F ξ ∈ W ∧
       ExsD (· ∈ W) l (Q' (· ∈ W)) (upd3 v₀ ξ.toZFSet (graphBelow F ξ) (F ξ)) := by
     intro ξ hξ hg
+    have hξθ : ξ < θ := hξ.trans hβ
     obtain ⟨hF, h⟩ := hstep ξ hξ hg
     refine ⟨hF, ?_⟩
     rw [← exsD_congr_outside (hQ'cong _) l _ _ (fun k _ hkl => hupd3 _ _ _ k hkl)]
@@ -362,18 +366,19 @@ theorem sigma1_recursion {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset 
     · exact h
     · intro k hk hkl
       rcases lt_or_ge k 3 with hk3 | hk3
-      · unfold upd3; interval_cases k <;> simp [hord ξ hξ, hg, hF]
+      · unfold upd3; interval_cases k <;> simp [hord ξ hξθ, hg, hF]
       · rw [upd3_apply_of_ge hk3]; exact hv k hk hkl hk3
-  have huniq' : ∀ ξ < θ, graphBelow F ξ ∈ W → ∀ y ∈ W,
+  have huniq' : ∀ ξ < β, graphBelow F ξ ∈ W → ∀ y ∈ W,
       ExsD (· ∈ W) l (Q' (· ∈ W)) (upd3 v₀ ξ.toZFSet (graphBelow F ξ) y) → y = F ξ := by
     intro ξ hξ hg y hy h
-    apply huniq ξ hξ y hy
+    have hξθ : ξ < θ := hξ.trans hβ
+    apply huniq ξ hξ hg y hy
     rw [← exsD_congr_outside (hQ'cong _) l _ _ (fun k _ hkl => hupd3 _ _ _ k hkl)] at h
     rw [exsD_congr_valD hQQ' l]
     · exact h
     · intro k hk hkl
       rcases lt_or_ge k 3 with hk3 | hk3
-      · unfold upd3; interval_cases k <;> simp [hord ξ hξ, hg, hy]
+      · unfold upd3; interval_cases k <;> simp [hord ξ hξθ, hg, hy]
       · rw [upd3_apply_of_ge hk3]; exact hv k hk hkl hk3
   -- fresh variables
   set M : ℕ := s.sup id + l.sum + 3 with hM
@@ -387,17 +392,20 @@ theorem sigma1_recursion {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset 
   | zero => intro _; rw [graphBelow_zero]; exact empty_mem_L_of_limit hlim
   | add_one ξ ih =>
     intro hξ1
-    have hξ : ξ < θ := (Order.lt_add_one_iff.mpr le_rfl).trans hξ1
-    have hg := ih hξ
+    have hξ : ξ < β := lt_of_lt_of_le (Order.lt_add_one_iff.mpr le_rfl) hξ1
+    have hξθ : ξ < θ := hξ.trans hβ
+    have hg := ih hξ.le
     rw [graphBelow_succ]
-    exact insert_mem_L_of_limit hlim (kpair_mem_L_of_limit hlim (hord ξ hξ) (hstep ξ hξ hg).1) hg
+    exact insert_mem_L_of_limit hlim (kpair_mem_L_of_limit hlim (hord ξ hξθ) (hstep ξ hξ hg).1) hg
   | limit lam hlamlim ih =>
-    intro hlam
+    intro hlamβ
+    have hlam : lam < θ := lt_of_le_of_lt hlamβ hβ
     -- Step A: for each `ζ₀ < λ`, a witness set `b` making the graph below `ζ₀` a partial approximation
     have stepA : ∀ ζ₀ < lam, ∃ b ∈ W, PA Q' l (· ∈ W) v₀ ζ₀.toZFSet (graphBelow F ζ₀) b := by
       intro ζ₀ hζ₀
+      have hζ₀β : ζ₀ < β := hζ₀.trans_le hlamβ
       have hζ₀θ : ζ₀ < θ := hζ₀.trans hlam
-      have hg₀ : graphBelow F ζ₀ ∈ W := ih ζ₀ hζ₀ hζ₀θ
+      have hg₀ : graphBelow F ζ₀ ∈ W := ih ζ₀ hζ₀ hζ₀β.le
       -- the matrix with the restriction and value conditions
       set Q₂ : Pred.{u} := fun D w =>
         (IsRestrict (w (M + 1)) (w 0) (w 1) ∧ ZFSet.pair (w 0) (w 2) ∈ w (M + 1)) ∧ Q' D w with hQ₂
@@ -442,9 +450,9 @@ theorem sigma1_recursion {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset 
         intro ζ' hζ'
         rw [show w₀ M = ζ₀.toZFSet by simp [w₀, Function.update_of_ne (show M ≠ M + 1 by omega)]] at hζ'
         obtain ⟨ξ', hξ', rfl⟩ := Ordinal.mem_toZFSet_iff.mp hζ'
-        have hξ'θ : ξ' < θ := hξ'.trans hζ₀θ
-        have hg' : graphBelow F ξ' ∈ W := ih ξ' (hξ'.trans hζ₀) hξ'θ
-        obtain ⟨hF', hexs'⟩ := hstep' ξ' hξ'θ hg'
+        have hξ'β : ξ' < β := hξ'.trans hζ₀β
+        have hg' : graphBelow F ξ' ∈ W := ih ξ' (hξ'.trans hζ₀) hξ'β.le
+        obtain ⟨hF', hexs'⟩ := hstep' ξ' hξ'β hg'
         refine ⟨graphBelow F ξ', hg', F ξ', hF', ?_⟩
         rw [exsD_and_of_indep hindep]
         refine ⟨?_, ?_⟩
@@ -535,7 +543,7 @@ theorem sigma1_recursion {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset 
       rw [show w₁ (M + 3) = lam.toZFSet by simp [hw₁]] at hζ₀
       obtain ⟨ξ₀, hξ₀, rfl⟩ := Ordinal.mem_toZFSet_iff.mp hζ₀
       obtain ⟨b, hb, hPAb⟩ := stepA ξ₀ hξ₀
-      refine ⟨graphBelow F ξ₀, ih ξ₀ hξ₀ (hξ₀.trans hlam), b, hb, ?_⟩
+      refine ⟨graphBelow F ξ₀, ih ξ₀ hξ₀ (hξ₀.le.trans hlamβ), b, hb, ?_⟩
       simp only [ExsD, hPAP]
       simp (disch := omega) only [Function.update_self, Function.update_of_ne]
       rw [PA_congr_v (hQ'cong _) (v' := v₀)]
@@ -622,62 +630,72 @@ theorem sigma1_recursion {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset 
         have hξ₀ : ξ' + 1 < lam := hlamlim.add_one_lt hξ'
         obtain ⟨g, hg, b, hb, hPAg⟩ := hcollB' (ξ' + 1) hξ₀
         have hgeq : g = graphBelow F (ξ' + 1) :=
-          PA_unique huniq' (ξ' + 1) (hξ₀.trans hlam) g b (fun z hz => hT.subset_of_mem (hBW b hb) hz) hPAg
+          PA_unique huniq' (ξ' + 1) (hξ₀.trans_le hlamβ) g b (fun z hz => hT.subset_of_mem (hBW b hb) hz) hPAg
         refine ⟨g, (hmemG g).mpr ⟨hg, ξ' + 1, hξ₀, b, hb, hPAg⟩, ?_⟩
         rw [hgeq]
         exact pair_mem_graphBelow_iff.mpr ⟨Order.lt_add_one_iff.mpr le_rfl, rfl⟩
       · rintro ⟨g, hg, hp⟩
         obtain ⟨_, ξ₀, hξ₀, b, hb, hPAg⟩ := (hmemG g).mp hg
         have hgeq : g = graphBelow F ξ₀ :=
-          PA_unique huniq' ξ₀ (hξ₀.trans hlam) g b (fun z hz => hT.subset_of_mem (hBW b hb) hz) hPAg
+          PA_unique huniq' ξ₀ (hξ₀.trans_le hlamβ) g b (fun z hz => hT.subset_of_mem (hBW b hb) hz) hPAg
         rw [hgeq, mem_graphBelow] at hp
         obtain ⟨ξ', hξ', rfl⟩ := hp
         exact ⟨ξ', hξ'.trans hξ₀, rfl⟩
     rw [hunion]
     exact sUnion_mem_L_of_limit hlim hG
 
-/-- **Lemma 10.3** in the paper's existence-and-uniqueness form.  Under the hypotheses of
-`sigma1_recursion`, for every `η` with `η + 1 < θ` there is *exactly one* set `G ∈ L θ` which is
-a function with domain `η + 1` and satisfies the recursion equation `Φ(ξ, G ↾ ξ, G ξ)` at every
-`ξ ≤ η`; it is the graph of `F` on `η + 1`. -/
-theorem sigma1_recursion_existsUnique {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset ℕ}
-    {Q : Pred.{u}} (hQ : Delta0Def s Q) (l : List ℕ) (hl0 : 0 ∉ l) (hl1 : 1 ∉ l) (hl2 : 2 ∉ l)
+/-- The unbounded corollary of `sigma1_recursion_le`: if the step and uniqueness hypotheses hold
+at every `ξ < θ`, then every graph below `ξ < θ` lies in `L θ`.  (Take `β := ξ`.) -/
+theorem sigma1_recursion {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset ℕ} {Q : Pred.{u}}
+    (hQ : Delta0Def s Q) (l : List ℕ) (hl0 : 0 ∉ l) (hl1 : 1 ∉ l) (hl2 : 2 ∉ l)
     {v : ℕ → ZFSet.{u}} (hv : ∀ k ∈ s, k ∉ l → 3 ≤ k → v k ∈ L θ)
     (F : Ordinal.{u} → ZFSet.{u})
     (hstep : ∀ ξ < θ, graphBelow F ξ ∈ L θ → F ξ ∈ L θ ∧
       ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) (F ξ)))
-    (huniq : ∀ ξ < θ, ∀ y ∈ L θ,
-      ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) y) → y = F ξ)
-    {η : Ordinal.{u}} (hη : η + 1 < θ) :
-    ∃! G : ZFSet.{u}, G ∈ L θ ∧ IsFunc G ∧ IsDom G (η + 1).toZFSet ∧
-      ∀ ξ ≤ η, ∀ g y, IsRestrict G ξ.toZFSet g → ZFSet.pair ξ.toZFSet y ∈ G →
+    (huniq : ∀ ξ < θ, graphBelow F ξ ∈ L θ → ∀ y ∈ L θ,
+      ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) y) → y = F ξ) :
+    ∀ ξ < θ, graphBelow F ξ ∈ L θ := fun ξ hξ =>
+  sigma1_recursion_le hθ hξ hQ l hl0 hl1 hl2 hv F
+    (fun ζ hζ => hstep ζ (hζ.trans hξ)) (fun ζ hζ => huniq ζ (hζ.trans hξ)) ξ le_rfl
+
+/-- **Lemma 10.3** in the paper's existence-and-uniqueness form, with an arbitrary bound `β < θ`.
+Under the hypotheses of `sigma1_recursion_le` there is *exactly one* set `G ∈ L θ` which is a
+function with domain `β` and satisfies the recursion equation `Φ(ξ, G ↾ ξ, G ξ)` at every
+`ξ < β`; it is the graph of `F` on `β`. -/
+theorem sigma1_recursion_existsUnique_le {θ β : Ordinal.{u}} (hθ : IsAdmissible θ) (hβ : β < θ)
+    {s : Finset ℕ} {Q : Pred.{u}} (hQ : Delta0Def s Q) (l : List ℕ)
+    (hl0 : 0 ∉ l) (hl1 : 1 ∉ l) (hl2 : 2 ∉ l)
+    {v : ℕ → ZFSet.{u}} (hv : ∀ k ∈ s, k ∉ l → 3 ≤ k → v k ∈ L θ)
+    (F : Ordinal.{u} → ZFSet.{u})
+    (hstep : ∀ ξ < β, graphBelow F ξ ∈ L θ → F ξ ∈ L θ ∧
+      ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) (F ξ)))
+    (huniq : ∀ ξ < β, graphBelow F ξ ∈ L θ → ∀ y ∈ L θ,
+      ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) y) → y = F ξ) :
+    ∃! G : ZFSet.{u}, G ∈ L θ ∧ IsFunc G ∧ IsDom G β.toZFSet ∧
+      ∀ ξ < β, ∀ g y, IsRestrict G ξ.toZFSet g → ZFSet.pair ξ.toZFSet y ∈ G →
         ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet g y) := by
   have hT := L_transitive θ
-  have hsucc : η < η + 1 := Order.lt_add_one_iff.mpr le_rfl
-  have hηθ : η < θ := hsucc.trans hη
-  have hgraph : ∀ ξ < θ, graphBelow F ξ ∈ L θ :=
-    sigma1_recursion hθ hQ l hl0 hl1 hl2 hv F hstep huniq
-  refine ⟨graphBelow F (η + 1),
-    ⟨hgraph _ hη, graphBelow_isFunc F _, graphBelow_isDom F _, ?_⟩, ?_⟩
+  have hgraph : ∀ ξ ≤ β, graphBelow F ξ ∈ L θ :=
+    sigma1_recursion_le hθ hβ hQ l hl0 hl1 hl2 hv F hstep huniq
+  have hgraphβ : ∀ ξ < β, graphBelow F ξ ∈ L θ := fun ξ hξ => hgraph ξ hξ.le
+  refine ⟨graphBelow F β,
+    ⟨hgraph _ le_rfl, graphBelow_isFunc F _, graphBelow_isDom F _, ?_⟩, ?_⟩
   · intro ξ hξ g y hres hpair
-    have hξθ : ξ < θ := hξ.trans_lt hηθ
-    have hgeq : g = graphBelow F ξ :=
-      isRestrict_unique hres (isRestrict_graphBelow (hξ.trans hsucc.le))
+    have hgeq : g = graphBelow F ξ := isRestrict_unique hres (isRestrict_graphBelow hξ.le)
     have hyeq : y = F ξ := (pair_mem_graphBelow_iff.mp hpair).2
     rw [hgeq, hyeq]
-    exact (hstep ξ hξθ (hgraph ξ hξθ)).2
+    exact (hstep ξ hξ (hgraphβ ξ hξ)).2
   · rintro G ⟨hGL, hGf, hGd, hGrec⟩
-    have key : ∀ ξ : Ordinal.{u}, ξ ≤ η → ∀ y, ZFSet.pair ξ.toZFSet y ∈ G → y = F ξ := by
+    have key : ∀ ξ : Ordinal.{u}, ξ < β → ∀ y, ZFSet.pair ξ.toZFSet y ∈ G → y = F ξ := by
       intro ξ
       induction ξ using Ordinal.induction with
       | _ ξ ih =>
       intro hξ y hy
-      have hξθ : ξ < θ := hξ.trans_lt hηθ
       have hGval : ∀ ζ < ξ, ZFSet.pair ζ.toZFSet (F ζ) ∈ G := by
         intro ζ hζ
         obtain ⟨b, hb⟩ := (hGd ζ.toZFSet).mp
-          (Ordinal.mem_toZFSet_iff.mpr ⟨ζ, (hζ.trans_le hξ).trans hsucc, rfl⟩)
-        rw [← ih ζ hζ (hζ.trans_le hξ).le b hb]
+          (Ordinal.mem_toZFSet_iff.mpr ⟨ζ, hζ.trans hξ, rfl⟩)
+        rw [← ih ζ hζ (hζ.trans hξ) b hb]
         exact hb
       have hres : IsRestrict G ξ.toZFSet (graphBelow F ξ) := by
         intro p
@@ -687,23 +705,182 @@ theorem sigma1_recursion_existsUnique {θ : Ordinal.{u}} (hθ : IsAdmissible θ)
           exact ⟨hGval ζ hζ, ζ.toZFSet, Ordinal.mem_toZFSet_iff.mpr ⟨ζ, hζ, rfl⟩, _, rfl⟩
         · rintro ⟨hp, a, ha, b, rfl⟩
           obtain ⟨ζ, hζ, rfl⟩ := Ordinal.mem_toZFSet_iff.mp ha
-          rw [ih ζ hζ (hζ.trans_le hξ).le b hp]
+          rw [ih ζ hζ (hζ.trans hξ) b hp]
           exact mem_graphBelow.mpr ⟨ζ, hζ, rfl⟩
       have hpL : ZFSet.pair ξ.toZFSet y ∈ L θ := hT.subset_of_mem hGL hy
       have hyL : y ∈ L θ :=
         hT.subset_of_mem (hT.subset_of_mem hpL (upair_mem_pair _ _)) (mem_upair_right _ _)
-      exact huniq ξ hξθ y hyL (hGrec ξ hξ _ y hres hy)
+      exact huniq ξ hξ (hgraphβ ξ hξ) y hyL (hGrec ξ hξ _ y hres hy)
     ext p
     constructor
     · intro hp
       obtain ⟨a, b, rfl⟩ := hGf.1 p hp
       obtain ⟨ζ, hζ, rfl⟩ := Ordinal.mem_toZFSet_iff.mp ((hGd a).mpr ⟨b, hp⟩)
-      rw [key ζ (Order.lt_add_one_iff.mp hζ) b hp]
+      rw [key ζ hζ b hp]
       exact mem_graphBelow.mpr ⟨ζ, hζ, rfl⟩
     · intro hp
       obtain ⟨ζ, hζ, rfl⟩ := mem_graphBelow.mp hp
       obtain ⟨b, hb⟩ := (hGd ζ.toZFSet).mp (Ordinal.mem_toZFSet_iff.mpr ⟨ζ, hζ, rfl⟩)
-      rw [← key ζ (Order.lt_add_one_iff.mp hζ) b hb]
+      rw [← key ζ hζ b hb]
       exact hb
+
+/-- **Lemma 10.3** in the paper's exact form: for every `η` with `η + 1 < θ` there is *exactly
+one* set `G ∈ L θ` which is a function with domain `η + 1` and satisfies the recursion equation
+`Φ(ξ, G ↾ ξ, G ξ)` at every `ξ ≤ η`.  The hypotheses are only required at `ξ ≤ η`. -/
+theorem sigma1_recursion_existsUnique {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset ℕ}
+    {Q : Pred.{u}} (hQ : Delta0Def s Q) (l : List ℕ) (hl0 : 0 ∉ l) (hl1 : 1 ∉ l) (hl2 : 2 ∉ l)
+    {v : ℕ → ZFSet.{u}} (hv : ∀ k ∈ s, k ∉ l → 3 ≤ k → v k ∈ L θ)
+    (F : Ordinal.{u} → ZFSet.{u}) {η : Ordinal.{u}} (hη : η + 1 < θ)
+    (hstep : ∀ ξ ≤ η, graphBelow F ξ ∈ L θ → F ξ ∈ L θ ∧
+      ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) (F ξ)))
+    (huniq : ∀ ξ ≤ η, graphBelow F ξ ∈ L θ → ∀ y ∈ L θ,
+      ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) y) → y = F ξ) :
+    ∃! G : ZFSet.{u}, G ∈ L θ ∧ IsFunc G ∧ IsDom G (η + 1).toZFSet ∧
+      ∀ ξ ≤ η, ∀ g y, IsRestrict G ξ.toZFSet g → ZFSet.pair ξ.toZFSet y ∈ G →
+        ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet g y) := by
+  have h := sigma1_recursion_existsUnique_le hθ hη hQ l hl0 hl1 hl2 hv F
+    (fun ζ hζ => hstep ζ (Order.lt_add_one_iff.mp hζ))
+    (fun ζ hζ => huniq ζ (Order.lt_add_one_iff.mp hζ))
+  simpa only [Order.lt_add_one_iff] using h
+
+/-- **ω-recursion** (Lemma 10.3, last clause: "there is likewise recursion along the natural
+number stages").  It is the case `β = ω` of `sigma1_recursion_existsUnique_le`: the hypotheses
+are required only at the natural number stages `n < ω`, and the unique solution is a function
+with domain `ωZ`. -/
+theorem sigma1_recursion_omega {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset ℕ}
+    {Q : Pred.{u}} (hQ : Delta0Def s Q) (l : List ℕ) (hl0 : 0 ∉ l) (hl1 : 1 ∉ l) (hl2 : 2 ∉ l)
+    {v : ℕ → ZFSet.{u}} (hv : ∀ k ∈ s, k ∉ l → 3 ≤ k → v k ∈ L θ)
+    (F : Ordinal.{u} → ZFSet.{u})
+    (hstep : ∀ ξ < Ordinal.omega0, graphBelow F ξ ∈ L θ → F ξ ∈ L θ ∧
+      ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) (F ξ)))
+    (huniq : ∀ ξ < Ordinal.omega0, graphBelow F ξ ∈ L θ → ∀ y ∈ L θ,
+      ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet (graphBelow F ξ) y) → y = F ξ) :
+    ∃! G : ZFSet.{u}, G ∈ L θ ∧ IsFunc G ∧ IsDom G ωZ ∧
+      ∀ ξ < Ordinal.omega0, ∀ g y, IsRestrict G ξ.toZFSet g → ZFSet.pair ξ.toZFSet y ∈ G →
+        ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet g y) :=
+  sigma1_recursion_existsUnique_le hθ hθ.omega_lt hQ l hl0 hl1 hl2 hv F hstep huniq
+
+/-! ### Lemma 10.3 with the function produced, not assumed -/
+
+/-- The Σ1 step relation `Φ(ξ, g, y, p̄)` of Lemma 10.3, read inside `L θ`: the value `y` lies
+in `L θ` and the Σ1 matrix `Q` holds of `(ξ, g, y)` with witnesses in `L θ`. -/
+def StepRel (θ : Ordinal.{u}) (Q : Pred.{u}) (l : List ℕ) (v : ℕ → ZFSet.{u})
+    (ξ : Ordinal.{u}) (g y : ZFSet.{u}) : Prop :=
+  y ∈ L θ ∧ ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet g y)
+
+open Classical in
+/-- The function produced by the recursion: at stage `ξ` it is a solution of `P ξ g ·` for the
+graph `g` built by the earlier stages (and `∅` when there is none).  Defined by well-founded
+recursion on the ordinals. -/
+noncomputable def recFun (P : Ordinal.{u} → ZFSet.{u} → ZFSet.{u} → Prop) :
+    Ordinal.{u} → ZFSet.{u} :=
+  (IsWellFounded.wf (r := ((· < ·) : Ordinal.{u} → Ordinal.{u} → Prop))).fix
+    (fun ξ ih =>
+      if h : ∃ y, P ξ (ZFSet.range (fun ζ : Set.Iio ξ => ZFSet.pair ζ.1.toZFSet (ih ζ.1 ζ.2))) y
+      then h.choose else ∅)
+
+open Classical in
+theorem recFun_eq (P : Ordinal.{u} → ZFSet.{u} → ZFSet.{u} → Prop) (ξ : Ordinal.{u}) :
+    recFun P ξ = if h : ∃ y, P ξ (graphBelow (recFun P) ξ) y then h.choose else ∅ := by
+  rw [recFun, WellFounded.fix_eq]
+  rfl
+
+/-- Whenever the step relation has a solution at `ξ` over the graph built so far, `recFun P ξ`
+is one. -/
+theorem recFun_spec {P : Ordinal.{u} → ZFSet.{u} → ZFSet.{u} → Prop} {ξ : Ordinal.{u}}
+    (h : ∃ y, P ξ (graphBelow (recFun P) ξ) y) : P ξ (graphBelow (recFun P) ξ) (recFun P ξ) := by
+  rw [recFun_eq, dif_pos h]
+  exact h.choose_spec
+
+/-- **Lemma 10.3** in the paper's own form: the function `F` is *produced*, not assumed.  The
+only hypothesis is the paper's: at every `ξ < β` (in the paper `β = η + 1`, i.e. `ξ ≤ η`) and
+every function `g` on `ξ` which already satisfies the recursion equation, there is exactly one
+`y` with `Φ(ξ, g, y, p̄)`.  The conclusion is that there is exactly one function `G ∈ L θ` with
+`dom G = β` satisfying the recursion equation at every `ξ < β`. -/
+theorem sigma1_recursion_paper {θ β : Ordinal.{u}} (hθ : IsAdmissible θ) (hβ : β < θ)
+    {s : Finset ℕ} {Q : Pred.{u}} (hQ : Delta0Def s Q) (l : List ℕ)
+    (hl0 : 0 ∉ l) (hl1 : 1 ∉ l) (hl2 : 2 ∉ l)
+    {v : ℕ → ZFSet.{u}} (hv : ∀ k ∈ s, k ∉ l → 3 ≤ k → v k ∈ L θ)
+    (hex : ∀ ξ < β, ∀ g ∈ L θ, IsFunc g → IsDom g ξ.toZFSet →
+      (∀ ζ < ξ, ∀ g' y, IsRestrict g ζ.toZFSet g' → ZFSet.pair ζ.toZFSet y ∈ g →
+        StepRel θ Q l v ζ g' y) →
+      ∃! y, StepRel θ Q l v ξ g y) :
+    ∃! G : ZFSet.{u}, G ∈ L θ ∧ IsFunc G ∧ IsDom G β.toZFSet ∧
+      ∀ ξ < β, ∀ g y, IsRestrict G ξ.toZFSet g → ZFSet.pair ξ.toZFSet y ∈ G →
+        ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet g y) := by
+  set F : Ordinal.{u} → ZFSet.{u} := recFun (StepRel θ Q l v) with hFdef
+  -- the recursion equations below `ξ` read off the graph
+  have hbelow : ∀ ξ : Ordinal.{u}, (∀ ζ < ξ, StepRel θ Q l v ζ (graphBelow F ζ) (F ζ)) →
+      ∀ ζ < ξ, ∀ g' y, IsRestrict (graphBelow F ξ) ζ.toZFSet g' →
+        ZFSet.pair ζ.toZFSet y ∈ graphBelow F ξ → StepRel θ Q l v ζ g' y := by
+    intro ξ hall ζ hζ g' y hres hpair
+    rw [isRestrict_unique hres (isRestrict_graphBelow hζ.le),
+      (pair_mem_graphBelow_iff.mp hpair).2]
+    exact hall ζ hζ
+  -- the main transfinite induction
+  have aux : ∀ ξ : Ordinal.{u}, ξ ≤ β →
+      graphBelow F ξ ∈ L θ ∧ (ξ < β → StepRel θ Q l v ξ (graphBelow F ξ) (F ξ)) := by
+    intro ξ
+    induction ξ using Ordinal.induction with
+    | _ ξ ih =>
+    intro hξβ
+    have hlow : ∀ ζ < ξ, StepRel θ Q l v ζ (graphBelow F ζ) (F ζ) := fun ζ hζ =>
+      (ih ζ hζ (hζ.le.trans hξβ)).2 (hζ.trans_le hξβ)
+    have hgζ : ∀ ζ < ξ, graphBelow F ζ ∈ L θ := fun ζ hζ => (ih ζ hζ (hζ.le.trans hξβ)).1
+    have hexζ : ∀ ζ < ξ, ∃! y, StepRel θ Q l v ζ (graphBelow F ζ) y := fun ζ hζ =>
+      hex ζ (hζ.trans_le hξβ) (graphBelow F ζ) (hgζ ζ hζ) (graphBelow_isFunc _ _)
+        (graphBelow_isDom _ _) (hbelow ζ (fun ζ' hζ' => hlow ζ' (hζ'.trans hζ)))
+    have hgξ : graphBelow F ξ ∈ L θ :=
+      sigma1_recursion_le hθ (lt_of_le_of_lt hξβ hβ) hQ l hl0 hl1 hl2 hv F
+        (fun ζ hζ _ => hlow ζ hζ)
+        (fun ζ hζ _ y hy hexs => by
+          obtain ⟨y₀, hy₀, huy⟩ := hexζ ζ hζ
+          rw [huy y ⟨hy, hexs⟩, ← huy (F ζ) (hlow ζ hζ)]) ξ le_rfl
+    refine ⟨hgξ, fun hξb => ?_⟩
+    obtain ⟨y₀, hy₀, -⟩ := hex ξ hξb (graphBelow F ξ) hgξ (graphBelow_isFunc _ _)
+      (graphBelow_isDom _ _) (hbelow ξ hlow)
+    exact recFun_spec ⟨y₀, hy₀⟩
+  have hgraph : ∀ ξ < β, graphBelow F ξ ∈ L θ := fun ξ hξ => (aux ξ hξ.le).1
+  have hlow : ∀ ξ < β, StepRel θ Q l v ξ (graphBelow F ξ) (F ξ) := fun ξ hξ =>
+    (aux ξ hξ.le).2 hξ
+  refine sigma1_recursion_existsUnique_le hθ hβ hQ l hl0 hl1 hl2 hv F
+    (fun ζ hζ _ => hlow ζ hζ) (fun ζ hζ _ y hy hexs => ?_)
+  obtain ⟨y₀, hy₀, huy⟩ := hex ζ hζ (graphBelow F ζ) (hgraph ζ hζ) (graphBelow_isFunc _ _)
+    (graphBelow_isDom _ _)
+    (hbelow ζ (fun ζ' hζ' => hlow ζ' (hζ'.trans hζ)))
+  rw [huy y ⟨hy, hexs⟩, ← huy (F ζ) (hlow ζ hζ)]
+
+/-- **Lemma 10.3** verbatim: for `η + 1 < θ`, if at every `ξ ≤ η` and every function `g` on `ξ`
+already satisfying the recursion equation there is exactly one `y` with `Φ(ξ, g, y, p̄)`, then
+there is exactly one function `G ∈ L θ` with `dom G = η + 1` and `Φ(ξ, G ↾ ξ, G ξ, p̄)` at every
+`ξ ≤ η`. -/
+theorem sigma1_recursion_paper_succ {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset ℕ}
+    {Q : Pred.{u}} (hQ : Delta0Def s Q) (l : List ℕ) (hl0 : 0 ∉ l) (hl1 : 1 ∉ l) (hl2 : 2 ∉ l)
+    {v : ℕ → ZFSet.{u}} (hv : ∀ k ∈ s, k ∉ l → 3 ≤ k → v k ∈ L θ)
+    {η : Ordinal.{u}} (hη : η + 1 < θ)
+    (hex : ∀ ξ ≤ η, ∀ g ∈ L θ, IsFunc g → IsDom g ξ.toZFSet →
+      (∀ ζ < ξ, ∀ g' y, IsRestrict g ζ.toZFSet g' → ZFSet.pair ζ.toZFSet y ∈ g →
+        StepRel θ Q l v ζ g' y) →
+      ∃! y, StepRel θ Q l v ξ g y) :
+    ∃! G : ZFSet.{u}, G ∈ L θ ∧ IsFunc G ∧ IsDom G (η + 1).toZFSet ∧
+      ∀ ξ ≤ η, ∀ g y, IsRestrict G ξ.toZFSet g → ZFSet.pair ξ.toZFSet y ∈ G →
+        ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet g y) := by
+  have h := sigma1_recursion_paper hθ hη hQ l hl0 hl1 hl2 hv
+    (fun ξ hξ => hex ξ (Order.lt_add_one_iff.mp hξ))
+  simpa only [Order.lt_add_one_iff] using h
+
+/-- **ω-recursion** (Lemma 10.3, last clause) in the paper's own form: the function is produced
+from the `∃!` hypothesis alone, and its domain is `ω`. -/
+theorem sigma1_recursion_paper_omega {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {s : Finset ℕ}
+    {Q : Pred.{u}} (hQ : Delta0Def s Q) (l : List ℕ) (hl0 : 0 ∉ l) (hl1 : 1 ∉ l) (hl2 : 2 ∉ l)
+    {v : ℕ → ZFSet.{u}} (hv : ∀ k ∈ s, k ∉ l → 3 ≤ k → v k ∈ L θ)
+    (hex : ∀ ξ < Ordinal.omega0, ∀ g ∈ L θ, IsFunc g → IsDom g ξ.toZFSet →
+      (∀ ζ < ξ, ∀ g' y, IsRestrict g ζ.toZFSet g' → ZFSet.pair ζ.toZFSet y ∈ g →
+        StepRel θ Q l v ζ g' y) →
+      ∃! y, StepRel θ Q l v ξ g y) :
+    ∃! G : ZFSet.{u}, G ∈ L θ ∧ IsFunc G ∧ IsDom G ωZ ∧
+      ∀ ξ < Ordinal.omega0, ∀ g y, IsRestrict G ξ.toZFSet g → ZFSet.pair ξ.toZFSet y ∈ G →
+        ExsD (· ∈ L θ) l (Q (· ∈ L θ)) (upd3 v ξ.toZFSet g y) :=
+  sigma1_recursion_paper hθ hθ.omega_lt hQ l hl0 hl1 hl2 hv hex
 
 end BM4.ST

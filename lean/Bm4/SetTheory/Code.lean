@@ -148,8 +148,15 @@ def DerSeqW (w s : ZFSet.{u}) : Prop :=
       e = ZFSet.pair (natZ 3) (ZFSet.pair e₁ e₂)) ∨
     (∃ k₁ ∈ k, ∃ e₁, ∃ i ∈ w, ZFSet.pair k₁ e₁ ∈ s ∧ e = ZFSet.pair (natZ 4) (ZFSet.pair i e₁))
 
-/-- `e` is a code: it occurs in a derivation sequence lying in `h` (intended `h = L ω`). -/
-def IsCodeW (h w e : ZFSet.{u}) : Prop := ∃ s ∈ h, DerSeqW w s ∧ ∃ k, ZFSet.pair k e ∈ s
+/-- `e` is the **last** term of `s`: writing `d` for the domain of `s`, the index `k` is the
+greatest element of `d` and `s(k) = e`.  Both quantifiers are bounded (`d ∈ w`, `k ∈ d`), so the
+predicate stays Δ₀. -/
+def IsLastW (w s e : ZFSet.{u}) : Prop :=
+  ∃ d ∈ w, IsDom s d ∧ ∃ k ∈ d, (∀ k' ∈ d, k' ∈ k ∨ k' = k) ∧ ZFSet.pair k e ∈ s
+
+/-- `e` is a code: it is the last term of a derivation sequence lying in `h` (intended
+`h = L ω`), exactly as in (8.2). -/
+def IsCodeW (h w e : ZFSet.{u}) : Prop := ∃ s ∈ h, DerSeqW w s ∧ IsLastW w s e
 
 theorem delta0_isAtomicCodeW (w e : ℕ) (hwe : w ≠ e) :
     Delta0Def {w, e} (fun _ v => IsAtomicCodeW (v w) (v e)) := by
@@ -250,26 +257,34 @@ theorem delta0_derSeqW (w s : ℕ) (hws : w ≠ s) :
   · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
       Finset.mem_union]; omega
 
+theorem delta0_isLastW (w s e : ℕ) (hws : w ≠ s) (hwe : w ≠ e) (hse : s ≠ e) :
+    Delta0Def {w, s, e} (fun _ v => IsLastW (v w) (v s) (v e)) := by
+  set m := w + s + e + 1 with hm
+  -- d := m, k := m+1, k' := m+2
+  have f1 := ((Delta0Def.mem (m + 2) (m + 1)).or
+    (Delta0Def.eq (m + 2) (m + 1))).ball (m + 2) m (by omega)
+  have f2 := f1.and (delta0_funVal s (m + 1) e (by omega) (by omega) (by omega))
+  have f3 := f2.bex (m + 1) m (by omega)
+  have f4 := (delta0_isDom s m (by omega)).and f3
+  have f5 := f4.bex m w (by omega)
+  refine (f5.congr ?_).of_eq ?_
+  · intro D v _ _
+    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
+    rfl
+  · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
+      Finset.mem_union]; omega
+
 theorem delta0_isCodeW (h w e : ℕ) (hhw : h ≠ w) (hhe : h ≠ e) (hwe : w ≠ e) :
     Delta0Def {h, w, e} (fun _ v => IsCodeW (v h) (v w) (v e)) := by
   set m := h + w + e + 1 with hm
-  -- s := m, p := m+1, q := m+2, k := m+3
-  have k0 := delta0_isKPair (m + 1) (m + 3) e (by omega) (by omega)
-  have k1 := k0.bex (m + 3) (m + 2) (by omega)
-  have k2 := k1.bex (m + 2) (m + 1) (by omega)
-  have k3 := k2.bex (m + 1) m (by omega)
-  have d := (delta0_derSeqW w m (by omega)).and k3
+  -- s := m
+  have d := (delta0_derSeqW w m (by omega)).and
+    (delta0_isLastW w m e (by omega) (by omega) (by omega))
   have hh := d.bex m h (by omega)
   refine (hh.congr ?_).of_eq ?_
   · intro D v _ _
     simp (disch := omega) only [Function.update_self, Function.update_of_ne]
-    unfold IsCodeW
-    apply exists_congr; intro s; apply and_congr_right; intro _
-    apply and_congr_right; intro _
-    constructor
-    · rintro ⟨p, hp, q, _, k, _, rfl⟩; exact ⟨k, hp⟩
-    · rintro ⟨k, hk⟩
-      exact ⟨_, hk, _, singleton_mem_pair _ _, k, ZFSet.mem_singleton.mpr rfl, rfl⟩
+    rfl
   · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
       Finset.mem_union]; omega
 
@@ -287,6 +302,14 @@ theorem mem_natZ_iff {x : ZFSet.{u}} : ∀ {n : ℕ}, x ∈ natZ n ↔ ∃ m < n
       rcases Nat.lt_succ_iff_lt_or_eq.mp hm with hm | rfl
       · exact Or.inr ⟨m, hm, rfl⟩
       · exact Or.inl rfl
+
+/-- Every element of `natZ n` is `≤ natZ (n-1)`: `natZ (n-1)` is the greatest index below `n`. -/
+theorem natZ_le_of_mem_natZ {n : ℕ} (hn : 0 < n) {x : ZFSet.{u}} (hx : x ∈ natZ n) :
+    x ∈ natZ (n - 1) ∨ x = natZ (n - 1) := by
+  obtain ⟨m, hm, rfl⟩ := mem_natZ_iff.mp hx
+  rcases Nat.lt_or_ge m (n - 1) with h | h
+  · exact Or.inl (natZ_mem_natZ_iff.mpr h)
+  · exact Or.inr (by congr 1; omega)
 
 /-- The sequence coding a list from position `k` on. -/
 def seqOfAux : ℕ → List ZFSet.{u} → ZFSet.{u}
@@ -320,6 +343,20 @@ theorem seqOfAux_mem_Lω : ∀ (k : ℕ) (l : List ZFSet.{u}), (∀ x ∈ l, x �
     exact insert_mem_L_of_limit Ordinal.isSuccLimit_omega0
       (kpair_mem_Lω (natZ_mem_Lω k) (hl a (by simp)))
       (seqOfAux_mem_Lω (k + 1) l (fun x hx => hl x (by simp [hx])))
+
+/-- The domain of `seqOfAux 0 l` is `natZ l.length`. -/
+theorem isDom_seqOfAux (l : List ZFSet.{u}) : IsDom (seqOfAux 0 l) (natZ l.length) := by
+  intro a
+  rw [mem_natZ_iff]
+  constructor
+  · rintro ⟨m, hm, rfl⟩
+    obtain ⟨x, hx⟩ : ∃ x, l[m]? = some x :=
+      ⟨l[m], List.getElem?_eq_some_iff.mpr ⟨hm, rfl⟩⟩
+    exact ⟨x, mem_seqOfAux.mpr ⟨m, x, hx, by simp⟩⟩
+  · rintro ⟨b, hb⟩
+    obtain ⟨n, x, hx, hp⟩ := mem_seqOfAux.mp hb
+    rw [ZFSet.pair_inj] at hp
+    exact ⟨n, (List.getElem?_eq_some_iff.mp hx).1, by simpa using hp.1⟩
 
 /-- The derivation list of a formula: all subformula codes, each after its own subformulas. -/
 def Fm.der : Fm → List ZFSet.{u}
@@ -482,17 +519,7 @@ theorem derSeqW_seqOf_der (φ : Fm) : DerSeqW ωZ (seqOfAux 0 (Fm.der.{u} φ)) :
     subst this
     rw [hx] at hx'
     exact Option.some.inj hx' 
-  · intro a
-    rw [mem_natZ_iff]
-    constructor
-    · rintro ⟨m, hm, rfl⟩
-      obtain ⟨x, hx⟩ : ∃ x, (Fm.der.{u} φ)[m]? = some x :=
-        ⟨(Fm.der.{u} φ)[m], List.getElem?_eq_some_iff.mpr ⟨hm, rfl⟩⟩
-      exact ⟨x, mem_seqOfAux.mpr ⟨m, x, hx, by simp⟩⟩
-    · rintro ⟨b, hb⟩
-      obtain ⟨n, x, hx, hp⟩ := mem_seqOfAux.mp hb
-      rw [ZFSet.pair_inj] at hp
-      exact ⟨n, (List.getElem?_eq_some_iff.mp hx).1, by simpa using hp.1⟩
+  · exact isDom_seqOfAux _
   · intro k e hke
     obtain ⟨n, x, hx, hp⟩ := mem_seqOfAux.mp hke
     rw [ZFSet.pair_inj] at hp
@@ -535,17 +562,19 @@ theorem derSeqW_entry_isCode {s : ZFSet.{u}} (hs : DerSeqW ωZ s) :
     obtain ⟨i', rfl⟩ := mem_ωZ_iff.mp hi
     exact ⟨.all i' φ₁, rfl⟩
 
-/-- Correctness: the codes are exactly the elements with a derivation sequence in `L ω`. -/
+/-- Correctness: the codes are exactly the elements that end a derivation sequence in `L ω`. -/
 theorem isCodeW_iff (e : ZFSet.{u}) : IsCodeW (L Ordinal.omega0) ωZ e ↔ ∃ φ : Fm, e = φ.code := by
   constructor
-  · rintro ⟨s, _, hs, k, hk⟩
-    obtain ⟨d, hd, hdom⟩ := hs.2.1
-    have hkd : k ∈ d := (hdom k).mpr ⟨e, hk⟩
+  · rintro ⟨s, _, hs, d, hd, _, k, hkd, _, hk⟩
     obtain ⟨N, rfl⟩ := mem_ωZ_iff.mp hd
     obtain ⟨n, _, rfl⟩ := mem_natZ_iff.mp hkd
     exact derSeqW_entry_isCode hs n e hk
   · rintro ⟨φ, rfl⟩
-    refine ⟨seqOfAux 0 (Fm.der.{u} φ), ?_, derSeqW_seqOf_der φ, natZ ((Fm.der.{u} φ).length - 1), ?_⟩
+    have hpos := Fm.der_length_pos.{u} φ
+    refine ⟨seqOfAux 0 (Fm.der.{u} φ), ?_, derSeqW_seqOf_der φ,
+      natZ (Fm.der.{u} φ).length, natZ_mem_ωZ _, isDom_seqOfAux _,
+      natZ ((Fm.der.{u} φ).length - 1), natZ_mem_natZ_iff.mpr (by omega),
+      fun k' hk' => natZ_le_of_mem_natZ hpos hk', ?_⟩
     · apply seqOfAux_mem_Lω
       intro x hx
       obtain ⟨ψ, rfl⟩ := Fm.mem_der.{u} φ x hx

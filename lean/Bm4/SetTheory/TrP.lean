@@ -65,6 +65,153 @@ theorem trPiP_add_two (D : ZFSet.{u} → Prop) (h w : ZFSet.{u}) (q : ℕ) (e a 
       e = ZFSet.pair (natZ 2) (ZFSet.pair ν d) → IsBlkUpdP w a ν t b →
         TrSigP D h w (q + 1) d b) := rfl
 
+/-! ### `Vars` and `Body` as terms (Definition 13.4) -/
+
+/-
+  Definition 13.4 writes the two code projections `ν = Vars(e)` and `d = Body(e)` as terms of
+  the definitional extension by `Δ₀`-definable function symbols, and quantifies only over `t`
+  and `b`.  `TrSigP` and `TrPiP` instead quantify over `ν` and `d`, bounded by `D`, and carry
+  the defining equation `e = ⟨tag, ⟨ν, d⟩⟩`.  The lemmas below show that the two readings
+  agree: a block code has at most one decomposition (`isVarsBody_unique`), so the bounded
+  quantifiers can only pick the values of the terms, and for `D = (· ∈ W)` with `W` transitive
+  the bound is automatic once `e ∈ W`.
+-/
+
+section VarsBody
+
+variable {D : ZFSet.{u} → Prop}
+
+/-- Σ side: a `D`-bounded `∃ν ∃d` carrying the defining equation is the matrix evaluated at the
+term projections. -/
+theorem bddEx_varsBody_iff {e ν d : ZFSet.{u}} {n : ℕ} {P : ZFSet.{u} → ZFSet.{u} → Prop}
+    (heq : e = ZFSet.pair (natZ n) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    (∃ ν', D ν' ∧ ∃ d', D d' ∧ e = ZFSet.pair (natZ n) (ZFSet.pair ν' d') ∧ P ν' d') ↔ P ν d := by
+  constructor
+  · rintro ⟨ν', -, d', -, heq', hP⟩
+    rw [heq, ZFSet.pair_inj, ZFSet.pair_inj] at heq'
+    obtain ⟨-, rfl, rfl⟩ := heq'
+    exact hP
+  · exact fun hP => ⟨ν, hν, d, hd, heq, hP⟩
+
+/-- Π side: a `D`-bounded `∀ν ∀d` guarded by the defining equation is the matrix evaluated at
+the term projections. -/
+theorem bddAll_varsBody_iff {e ν d : ZFSet.{u}} {n : ℕ} {P : ZFSet.{u} → ZFSet.{u} → Prop}
+    (heq : e = ZFSet.pair (natZ n) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    (∀ ν', D ν' → ∀ d', D d' → e = ZFSet.pair (natZ n) (ZFSet.pair ν' d') → P ν' d') ↔ P ν d := by
+  constructor
+  · exact fun H => H ν hν d hd heq
+  · intro hP ν' _ d' _ heq'
+    rw [heq, ZFSet.pair_inj, ZFSet.pair_inj] at heq'
+    obtain ⟨-, rfl, rfl⟩ := heq'
+    exact hP
+
+/-- The term reading itself: quantifying over every decomposition of `e` is the same as
+evaluating at the one it has. -/
+theorem forall_isVarsBody_iff {e ν d : ZFSet.{u}} {P : ZFSet.{u} → ZFSet.{u} → Prop}
+    (h : IsVarsBody e ν d) :
+    (∀ ν' d', IsVarsBody e ν' d' → P ν' d') ↔ P ν d := by
+  constructor
+  · exact fun H => H ν d h
+  · intro hP ν' d' h'
+    obtain ⟨rfl, rfl⟩ := isVarsBody_unique h h'
+    exact hP
+
+/-- The bounded `∃ν ∃d` of `TrSigP` and the term reading of Definition 13.4 are equivalent. -/
+theorem bddEx_iff_forall_isVarsBody {e ν d : ZFSet.{u}} {n : ℕ}
+    {P : ZFSet.{u} → ZFSet.{u} → Prop} (hn : n = 1 ∨ n = 2)
+    (heq : e = ZFSet.pair (natZ n) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    (∃ ν', D ν' ∧ ∃ d', D d' ∧ e = ZFSet.pair (natZ n) (ZFSet.pair ν' d') ∧ P ν' d') ↔
+      ∀ ν' d', IsVarsBody e ν' d' → P ν' d' := by
+  have hvb : IsVarsBody e ν d := by
+    rcases hn with rfl | rfl
+    exacts [Or.inl heq, Or.inr heq]
+  rw [bddEx_varsBody_iff heq hν hd, forall_isVarsBody_iff hvb]
+
+/-- The bounded `∀ν ∀d` of `TrPiP` and the term reading of Definition 13.4 are equivalent. -/
+theorem bddAll_iff_forall_isVarsBody {e ν d : ZFSet.{u}} {n : ℕ}
+    {P : ZFSet.{u} → ZFSet.{u} → Prop} (hn : n = 1 ∨ n = 2)
+    (heq : e = ZFSet.pair (natZ n) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    (∀ ν', D ν' → ∀ d', D d' → e = ZFSet.pair (natZ n) (ZFSet.pair ν' d') → P ν' d') ↔
+      ∀ ν' d', IsVarsBody e ν' d' → P ν' d' := by
+  have hvb : IsVarsBody e ν d := by
+    rcases hn with rfl | rfl
+    exacts [Or.inl heq, Or.inr heq]
+  rw [bddAll_varsBody_iff heq hν hd, forall_isVarsBody_iff hvb]
+
+/-- For `D = (· ∈ W)` with `W` transitive the bound on the two projections is automatic: they
+are members of `W` as soon as the code is. -/
+theorem mem_of_isVarsBody {W : ZFSet.{u}} (hWt : W.IsTransitive) {e ν d : ZFSet.{u}}
+    (h : IsVarsBody e ν d) (he : e ∈ W) : ν ∈ W ∧ d ∈ W := by
+  have hp : ZFSet.pair ν d ∈ W := by
+    rcases h with rfl | rfl <;> exact snd_mem_of_kpair_mem hWt he
+  exact ⟨fst_mem_of_kpair_mem hWt hp, snd_mem_of_kpair_mem hWt hp⟩
+
+/-- The shape actually used in `TrSigP`, where the defining equation sits inside the block
+`∃t ∃b` of Definition 13.4. -/
+theorem bddEx_varsBody_body_iff {e ν d : ZFSet.{u}} {n : ℕ}
+    {Q : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop}
+    (heq : e = ZFSet.pair (natZ n) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    (∃ ν', D ν' ∧ ∃ d', D d' ∧ ∃ t, D t ∧ ∃ b, D b ∧
+        e = ZFSet.pair (natZ n) (ZFSet.pair ν' d') ∧ Q ν' d' t b) ↔
+      ∃ t, D t ∧ ∃ b, D b ∧ Q ν d t b := by
+  constructor
+  · rintro ⟨ν', -, d', -, t, ht, b, hb, heq', hQ⟩
+    rw [heq, ZFSet.pair_inj, ZFSet.pair_inj] at heq'
+    obtain ⟨-, rfl, rfl⟩ := heq'
+    exact ⟨t, ht, b, hb, hQ⟩
+  · rintro ⟨t, ht, b, hb, hQ⟩
+    exact ⟨ν, hν, d, hd, t, ht, b, hb, heq, hQ⟩
+
+/-- The shape actually used in `TrPiP`, where the defining equation guards the block `∀t ∀b` of
+Definition 13.4. -/
+theorem bddAll_varsBody_body_iff {e ν d : ZFSet.{u}} {n : ℕ}
+    {Q : ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → ZFSet.{u} → Prop}
+    (heq : e = ZFSet.pair (natZ n) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    (∀ ν', D ν' → ∀ d', D d' → ∀ t, D t → ∀ b, D b →
+        e = ZFSet.pair (natZ n) (ZFSet.pair ν' d') → Q ν' d' t b) ↔
+      ∀ t, D t → ∀ b, D b → Q ν d t b := by
+  constructor
+  · exact fun H t ht b hb => H ν hν d hd t ht b hb heq
+  · intro H ν' _ d' _ t ht b hb heq'
+    rw [heq, ZFSet.pair_inj, ZFSet.pair_inj] at heq'
+    obtain ⟨-, rfl, rfl⟩ := heq'
+    exact H t ht b hb
+
+/-- **Definition 13.4** (Σ, `q = 1`) as the paper writes it: with `ν = Vars(e)` and
+`d = Body(e)` read as terms, the only quantifiers are `∃t ∃b`. -/
+theorem trSigP_one_vars_body {h w e a ν d : ZFSet.{u}}
+    (heq : e = ZFSet.pair (natZ 1) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    TrSigP D h w 1 e a ↔ IsSigCodeWD h w 1 e ∧
+      ∃ t, D t ∧ ∃ b, D b ∧ IsBlkUpdP w a ν t b ∧ TrMSig D h w d b := by
+  rw [trSigP_one]
+  exact and_congr_right fun _ => bddEx_varsBody_body_iff heq hν hd
+
+/-- **Definition 13.4** (Π, `q = 1`) as the paper writes it. -/
+theorem trPiP_one_vars_body {h w e a ν d : ZFSet.{u}}
+    (heq : e = ZFSet.pair (natZ 2) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    TrPiP D h w 1 e a ↔ IsPiCodeWD h w 1 e ∧
+      ∀ t, D t → ∀ b, D b → IsBlkUpdP w a ν t b → TrMPi D h w d b := by
+  rw [trPiP_one]
+  exact and_congr_right fun _ => bddAll_varsBody_body_iff heq hν hd
+
+/-- **Definition 13.4** (Σ, `q + 2`) as the paper writes it. -/
+theorem trSigP_add_two_vars_body {h w e a ν d : ZFSet.{u}} {q : ℕ}
+    (heq : e = ZFSet.pair (natZ 1) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    TrSigP D h w (q + 2) e a ↔ IsSigCodeWD h w (q + 2) e ∧
+      ∃ t, D t ∧ ∃ b, D b ∧ IsBlkUpdP w a ν t b ∧ TrPiP D h w (q + 1) d b := by
+  rw [trSigP_add_two]
+  exact and_congr_right fun _ => bddEx_varsBody_body_iff heq hν hd
+
+/-- **Definition 13.4** (Π, `q + 2`) as the paper writes it. -/
+theorem trPiP_add_two_vars_body {h w e a ν d : ZFSet.{u}} {q : ℕ}
+    (heq : e = ZFSet.pair (natZ 2) (ZFSet.pair ν d)) (hν : D ν) (hd : D d) :
+    TrPiP D h w (q + 2) e a ↔ IsPiCodeWD h w (q + 2) e ∧
+      ∀ t, D t → ∀ b, D b → IsBlkUpdP w a ν t b → TrSigP D h w (q + 1) d b := by
+  rw [trPiP_add_two]
+  exact and_congr_right fun _ => bddAll_varsBody_body_iff heq hν hd
+
+end VarsBody
+
 /-! ### Complexity (Lemma 13.5, padding form) -/
 
 /-- **Lemma 13.5** for the padding truth predicates: the predicate for `Sig q` codes is `Σ̂q`
@@ -222,169 +369,8 @@ theorem exists_blkUpdP_W {W : ZFSet.{u}} (hW : WClosed W) {a : ZFSet.{u}} (ha : 
 
 /-! ### Good assignments for the padding block update -/
 
-/-- The assignment `a` is a finite sequence over `W`.  Compared with `GoodAsn` the clause
-`∀ i ∈ b.blockVars, ∃ y, ⟨natZ i, y⟩ ∈ a` is **absent**: the padding of `IsBlkUpdP` supplies
-the missing entries.  What remains records that the block variable lists have no repetitions
-(otherwise the block update is not well defined), that the code of `b` lies in `W`, and that
-`W` is closed under `∅` and `insert`. -/
-def GoodAsnP (W : ZFSet.{u}) (b : BF) (a : ZFSet.{u}) : Prop :=
-  IsSeqA ωZ W a ∧ a ∈ W ∧ b.blockVars.Nodup ∧ BF.code.{u} b ∈ W ∧ WClosed W
-
-/-- At the Δ₀ level the block variable list is empty, so `GoodAsnP` already gives `GoodAsn`. -/
-theorem goodAsn_of_goodAsnP_delta {W : ZFSet.{u}} {sg : Bool} {φ : Fm} {a : ZFSet.{u}}
-    (hg : GoodAsnP W (BF.delta sg φ) a) : GoodAsn W (BF.delta sg φ) a := by
-  obtain ⟨ha, haW, hnd, hcode, hW⟩ := hg
-  refine ⟨ha, haW, ?_, hnd, hcode, hW⟩
-  intro i hi
-  simp only [BF.blockVars, List.not_mem_nil] at hi
-
 /-! ### The quantifier-block step -/
 
-theorem trSigP_step {W : ZFSet.{u}} (hWt : W.IsTransitive) {l : List ℕ} {ψ : BF}
-    {a : ZFSet.{u}} (hg : GoodAsnP W (BF.exs l ψ) a)
-    {P : ZFSet.{u} → ZFSet.{u} → Prop}
-    (hP : ∀ b, GoodAsnP W ψ b → (P (BF.code.{u} ψ) b ↔ Sat (· ∈ W) (SeqVal b) ψ.toFm)) :
-    (∃ ν, ν ∈ W ∧ ∃ d, d ∈ W ∧ ∃ t, t ∈ W ∧ ∃ b, b ∈ W ∧
-        BF.code.{u} (BF.exs l ψ) = ZFSet.pair (natZ 1) (ZFSet.pair ν d) ∧
-        IsBlkUpdP ωZ a ν t b ∧ P d b) ↔
-      Sat (· ∈ W) (SeqVal a) (BF.exs l ψ).toFm := by
-  obtain ⟨ha, haW, hnd, hcode, hW⟩ := hg
-  simp only [BF.blockVars] at hnd
-  have hndl : l.Nodup := (List.nodup_append.mp hnd).1
-  have hndψ : ψ.blockVars.Nodup := (List.nodup_append.mp hnd).2.1
-  rw [code_exs] at hcode
-  have hcodeψ : BF.code.{u} ψ ∈ W :=
-    snd_mem_of_kpair_mem hWt (snd_mem_of_kpair_mem hWt hcode)
-  rw [toFm_exs, sat_exs_iff_exsD, exsD_iff_exists_list]
-  constructor
-  · rintro ⟨ν, hνW, d, hdW, t, htW, b, hbW, heq, hbu, hPd⟩
-    rw [code_exs] at heq
-    obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
-    obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-    obtain ⟨xs, hlen, hxsW, hseqb, hvalb⟩ := blkUpdP_list hWt hW ha hndl htW hbu
-    refine ⟨xs, hlen, hxsW, ?_⟩
-    rw [← hvalb]
-    exact (hP b ⟨hseqb, hbW, hndψ, hcodeψ, hW⟩).mp hPd
-  · rintro ⟨xs, hlen, hxsW, hsat⟩
-    obtain ⟨b, hbu, hseqb, hbW, hvalb⟩ := exists_blkUpdP_W hW ha hndl hlen hxsW
-    refine ⟨seqOfNats.{u} l, hW.seqOfNats_mem l, BF.code.{u} ψ, hcodeψ,
-      seqOfVals xs, hW.seqOfVals_mem xs hxsW, b, hbW, code_exs l ψ, hbu, ?_⟩
-    refine (hP b ⟨hseqb, hbW, hndψ, hcodeψ, hW⟩).mpr ?_
-    rw [hvalb]
-    exact hsat
-
-theorem trPiP_step {W : ZFSet.{u}} (hWt : W.IsTransitive) {l : List ℕ} {ψ : BF}
-    {a : ZFSet.{u}} (hg : GoodAsnP W (BF.alls l ψ) a)
-    {P : ZFSet.{u} → ZFSet.{u} → Prop}
-    (hP : ∀ b, GoodAsnP W ψ b → (P (BF.code.{u} ψ) b ↔ Sat (· ∈ W) (SeqVal b) ψ.toFm)) :
-    (∀ ν, ν ∈ W → ∀ d, d ∈ W → ∀ t, t ∈ W → ∀ b, b ∈ W →
-        BF.code.{u} (BF.alls l ψ) = ZFSet.pair (natZ 2) (ZFSet.pair ν d) →
-        IsBlkUpdP ωZ a ν t b → P d b) ↔
-      Sat (· ∈ W) (SeqVal a) (BF.alls l ψ).toFm := by
-  obtain ⟨ha, haW, hnd, hcode, hW⟩ := hg
-  simp only [BF.blockVars] at hnd
-  have hndl : l.Nodup := (List.nodup_append.mp hnd).1
-  have hndψ : ψ.blockVars.Nodup := (List.nodup_append.mp hnd).2.1
-  rw [code_alls] at hcode
-  have hcodeψ : BF.code.{u} ψ ∈ W :=
-    snd_mem_of_kpair_mem hWt (snd_mem_of_kpair_mem hWt hcode)
-  rw [toFm_alls, sat_alls_iff_allD, allD_iff_forall_list]
-  constructor
-  · intro H xs hlen hxsW
-    obtain ⟨b, hbu, hseqb, hbW, hvalb⟩ := exists_blkUpdP_W hW ha hndl hlen hxsW
-    have hPd := H (seqOfNats.{u} l) (hW.seqOfNats_mem l) (BF.code.{u} ψ) hcodeψ
-      (seqOfVals xs) (hW.seqOfVals_mem xs hxsW) b hbW (code_alls l ψ) hbu
-    rw [← hvalb]
-    exact (hP b ⟨hseqb, hbW, hndψ, hcodeψ, hW⟩).mp hPd
-  · intro H ν hνW d hdW t htW b hbW heq hbu
-    rw [code_alls] at heq
-    obtain ⟨-, heq2⟩ := ZFSet.pair_injective heq
-    obtain ⟨rfl, rfl⟩ := ZFSet.pair_injective heq2
-    obtain ⟨xs, hlen, hxsW, hseqb, hvalb⟩ := blkUpdP_list hWt hW ha hndl htW hbu
-    refine (hP b ⟨hseqb, hbW, hndψ, hcodeψ, hW⟩).mpr ?_
-    rw [hvalb]
-    exact H xs hlen hxsW
-
 /-! ### Theorem 13.6 for the padding truth predicates -/
-
-/-- The two halves of **Theorem 13.6** over the padding block update, by simultaneous strong
-induction on the number of alternating blocks. -/
-theorem trSigPiP_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W) :
-    ∀ (q : ℕ) (b : BF),
-      (BF.Sig q b → ∀ a, GoodAsnP W b a →
-        (TrSigP (· ∈ W) (L Ordinal.omega0) ωZ q (BF.code.{u} b) a ↔
-          Sat (· ∈ W) (SeqVal a) b.toFm)) ∧
-      (BF.Pi q b → ∀ a, GoodAsnP W b a →
-        (TrPiP (· ∈ W) (L Ordinal.omega0) ωZ q (BF.code.{u} b) a ↔
-          Sat (· ∈ W) (SeqVal a) b.toFm)) := by
-  intro q
-  induction q using Nat.strong_induction_on with
-  | _ q ih =>
-  intro b
-  match q with
-  | 0 =>
-    constructor
-    · intro hs a hg
-      cases hs with
-      | zero hφ =>
-        rw [trSigP_zero]
-        exact trMSig_correct hWt hbase hφ (goodAsn_of_goodAsnP_delta hg)
-    · intro hs a hg
-      cases hs with
-      | zero hφ =>
-        rw [trPiP_zero]
-        exact trMPi_correct hWt hbase hφ (goodAsn_of_goodAsnP_delta hg)
-  | 1 =>
-    constructor
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trSigP_one, and_iff_right (isSigCodeWD_code (BF.Sig.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2.1))]
-        refine trSigP_step hWt hg ?_
-        intro b' hg'
-        cases hψ with
-        | zero hφ => exact trMSig_correct hWt hbase hφ (goodAsn_of_goodAsnP_delta hg')
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trPiP_one, and_iff_right (isPiCodeWD_code (BF.Pi.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2.1))]
-        refine trPiP_step hWt hg ?_
-        intro b' hg'
-        cases hψ with
-        | zero hφ => exact trMPi_correct hWt hbase hφ (goodAsn_of_goodAsnP_delta hg')
-  | n + 2 =>
-    constructor
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trSigP_add_two, and_iff_right (isSigCodeWD_code (BF.Sig.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2.1))]
-        refine trSigP_step hWt hg ?_
-        intro b' hg'
-        exact (ih (n + 1) (by omega) _).2 hψ b' hg'
-    · intro hs a hg
-      cases hs with
-      | succ hl hψ =>
-        rw [trPiP_add_two, and_iff_right (isPiCodeWD_code (BF.Pi.succ hl hψ)
-          (BF.nodupBlocks_of_blockVars_nodup hg.2.2.1))]
-        refine trPiP_step hWt hg ?_
-        intro b' hg'
-        exact (ih (n + 1) (by omega) _).1 hψ b' hg'
-
-/-- **Theorem 13.6** (Σ side) over the padding block update. -/
-theorem trSigP_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W) :
-    ∀ (q : ℕ) (b : BF), BF.Sig q b → ∀ a, GoodAsnP W b a →
-      (TrSigP (· ∈ W) (L Ordinal.omega0) ωZ q (BF.code b) a ↔
-        Sat (· ∈ W) (SeqVal a) b.toFm) :=
-  fun q b => (trSigPiP_correct hWt hbase q b).1
-
-/-- **Theorem 13.6** (Π side) over the padding block update. -/
-theorem trPiP_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrect W) :
-    ∀ (q : ℕ) (b : BF), BF.Pi q b → ∀ a, GoodAsnP W b a →
-      (TrPiP (· ∈ W) (L Ordinal.omega0) ωZ q (BF.code b) a ↔
-        Sat (· ∈ W) (SeqVal a) b.toFm) :=
-  fun q b => (trSigPiP_correct hWt hbase q b).2
 
 end BM4.ST

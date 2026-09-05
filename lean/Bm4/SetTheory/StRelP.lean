@@ -34,20 +34,6 @@ ever uses.  So we redo the (short) block step and Theorem 13.6 over the weaker h
 def GoodAsnQ (W : ZFSet.{u}) (b : BF) (a : ZFSet.{u}) : Prop :=
   IsSeqA ωZ W a ∧ a ∈ W ∧ b.NodupBlocks ∧ BF.code.{u} b ∈ W ∧ WClosed W
 
-theorem goodAsnQ_of_goodAsnP {W : ZFSet.{u}} {b : BF} {a : ZFSet.{u}} (hg : GoodAsnP W b a) :
-    GoodAsnQ W b a :=
-  ⟨hg.1, hg.2.1, BF.nodupBlocks_of_blockVars_nodup hg.2.2.1, hg.2.2.2.1, hg.2.2.2.2⟩
-
-/-- At the Δ₀ level there are no block variables at all, so `GoodAsnQ` gives `GoodAsn`. -/
-theorem goodAsn_of_goodAsnQ_delta {W : ZFSet.{u}} {sg : Bool} {φ : Fm} {a : ZFSet.{u}}
-    (hg : GoodAsnQ W (BF.delta sg φ) a) : GoodAsn W (BF.delta sg φ) a := by
-  obtain ⟨ha, haW, -, hcode, hW⟩ := hg
-  refine ⟨ha, haW, ?_, ?_, hcode, hW⟩
-  · intro i hi
-    simp only [BF.blockVars, List.not_mem_nil] at hi
-  · simp only [BF.blockVars]
-    exact List.nodup_nil
-
 theorem trSigQ_step {W : ZFSet.{u}} (hWt : W.IsTransitive) {l : List ℕ} {ψ : BF}
     {a : ZFSet.{u}} (hg : GoodAsnQ W (BF.exs l ψ) a)
     {P : ZFSet.{u} → ZFSet.{u} → Prop}
@@ -129,12 +115,12 @@ theorem trSigPiQ_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCor
       cases hs with
       | zero hφ =>
         rw [trSigP_zero]
-        exact trMSig_correct hWt hbase hφ (goodAsn_of_goodAsnQ_delta hg)
+        exact trMSig_correct hWt hbase hφ hg.1 hg.2.1 hg.2.2.2.1 hg.2.2.2.2
     · intro hs a hg
       cases hs with
       | zero hφ =>
         rw [trPiP_zero]
-        exact trMPi_correct hWt hbase hφ (goodAsn_of_goodAsnQ_delta hg)
+        exact trMPi_correct hWt hbase hφ hg.1 hg.2.1 hg.2.2.2.1 hg.2.2.2.2
   | 1 =>
     constructor
     · intro hs a hg
@@ -144,7 +130,7 @@ theorem trSigPiQ_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCor
         refine trSigQ_step hWt hg ?_
         intro b' hg'
         cases hψ with
-        | zero hφ => exact trMSig_correct hWt hbase hφ (goodAsn_of_goodAsnQ_delta hg')
+        | zero hφ => exact trMSig_correct hWt hbase hφ hg'.1 hg'.2.1 hg'.2.2.2.1 hg'.2.2.2.2
     · intro hs a hg
       cases hs with
       | succ hl hψ =>
@@ -152,7 +138,7 @@ theorem trSigPiQ_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCor
         refine trPiQ_step hWt hg ?_
         intro b' hg'
         cases hψ with
-        | zero hφ => exact trMPi_correct hWt hbase hφ (goodAsn_of_goodAsnQ_delta hg')
+        | zero hφ => exact trMPi_correct hWt hbase hφ hg'.1 hg'.2.1 hg'.2.2.2.1 hg'.2.2.2.2
   | n + 2 =>
     constructor
     · intro hs a hg
@@ -184,6 +170,173 @@ theorem trPiQ_correct {W : ZFSet.{u}} (hWt : W.IsTransitive) (hbase : BaseCorrec
         Sat (· ∈ W) (SeqVal a) b.toFm) :=
   fun q b => (trSigPiQ_correct hWt hbase q b).2
 
+/-! ### `Asn_M(e, a)` for codes of block formulas
+
+`IsAsn` of `SatCode.lean` is the paper's `Asn_A(e, a)`: a finite `A`-valued assignment whose
+domain covers every free variable of the code `e`.  Its free-variable clause reads the free
+variables off `e` with `NotFreeW`, which recognizes codes of *named-variable* formulas.  The
+codes quantified over in (14.1) are codes of *block* formulas, so that clause has to read them
+off `BF.code` instead.  `NotFreeBFW h w x j e` does exactly that: it peels the `j` quantifier
+blocks off `e`, stopping as soon as `x` occurs among the variables of one of them, and calls
+`NotFreeW` on the Δ₀ matrix underneath. -/
+
+/-- `x` occurs among the values of the finite sequence `ν`, i.e. `x` is one of the variables of
+the quantifier block coded by `ν`. -/
+def InRanZ (ν x : ZFSet.{u}) : Prop := ∃ k, ZFSet.pair k x ∈ ν
+
+/-- The bounded form of `InRanZ`. -/
+theorem inRanZ_iff_bounded (ν x : ZFSet.{u}) :
+    InRanZ ν x ↔ ∃ p ∈ ν, ∃ q ∈ p, ∃ k ∈ q, p = ZFSet.pair k x := by
+  constructor
+  · rintro ⟨k, hk⟩
+    exact ⟨_, hk, _, upair_mem_pair k x, k, mem_upair_left k x, rfl⟩
+  · rintro ⟨p, hp, q, -, k, -, rfl⟩
+    exact ⟨k, hp⟩
+
+/-- `InRanZ` is Δ₀. -/
+theorem delta0_inRanZ (n x : ℕ) :
+    Delta0Def.{u} {n, x} (fun _ v => InRanZ (v n) (v x)) := by
+  set m := n + x + 1 with hm
+  have h0 := delta0_isKPair m (m + 2) x (by omega) (by omega)
+  have h1 := h0.bex (m + 2) (m + 1) (by omega)
+  have h2 := h1.bex (m + 1) m (by omega)
+  have hb := h2.bex m n (by omega)
+  refine (hb.congr ?_).of_eq ?_
+  · intro D v _ _
+    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
+    exact (inRanZ_iff_bounded (v n) (v x)).symm
+  · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton]; omega
+
+/-- `x` does not occur free in the block formula with `j` quantifier blocks coded by `e`: peel the
+blocks off, `x` being not free as soon as it is a variable of one of them, and read the Δ₀ matrix
+with `NotFreeW`. -/
+def NotFreeBFW (h w x : ZFSet.{u}) : ℕ → ZFSet.{u} → Prop
+  | 0, e => ∃ sg d, e = ZFSet.pair (natZ 0) (ZFSet.pair sg d) ∧ NotFreeW h w x d
+  | j + 1, e => ∃ t ν d, e = ZFSet.pair t (ZFSet.pair ν d) ∧
+      (InRanZ ν x ∨ NotFreeBFW h w x j d)
+
+theorem notFreeBFW_zero (h w x e : ZFSet.{u}) :
+    NotFreeBFW h w x 0 e ↔
+      ∃ sg d, e = ZFSet.pair (natZ 0) (ZFSet.pair sg d) ∧ NotFreeW h w x d := Iff.rfl
+
+theorem notFreeBFW_succ (h w x : ZFSet.{u}) (j : ℕ) (e : ZFSet.{u}) :
+    NotFreeBFW h w x (j + 1) e ↔ ∃ t ν d, e = ZFSet.pair t (ZFSet.pair ν d) ∧
+      (InRanZ ν x ∨ NotFreeBFW h w x j d) := Iff.rfl
+
+/-- `NotFreeBFW` is Δ₀ (for each fixed number of blocks). -/
+theorem delta0_notFreeBFW : ∀ (j : ℕ) (h w x e : ℕ), h ≠ w → h ≠ x → h ≠ e → w ≠ x → w ≠ e →
+    x ≠ e → Delta0Def.{u} {h, w, x, e} (fun _ v => NotFreeBFW (v h) (v w) (v x) j (v e)) := by
+  intro j
+  induction j with
+  | zero =>
+    intro h w x e hhw hhx hhe hwx hwe hxe
+    set m := h + w + x + e + 1 with hm
+    have b0 := (delta0_tagPair 0 e (m + 4) (m + 6) (by omega) (by omega)).and
+      (delta0_notFreeW h w x (m + 6) hhw hhx (by omega) hwx (by omega) (by omega))
+    have b1 := b0.bex (m + 6) (m + 5) (by omega)
+    have b2 := b1.bex (m + 5) (m + 2) (by omega)
+    have b3 := b2.bex (m + 4) (m + 3) (by omega)
+    have b4 := b3.bex (m + 3) (m + 2) (by omega)
+    have b5 := b4.bex (m + 2) (m + 1) (by omega)
+    have b6 := b5.bex (m + 1) e (by omega)
+    refine (b6.congr ?_).of_eq ?_
+    · intro D v _ _
+      simp (disch := omega) only [notFreeBFW_zero, Function.update_self, Function.update_of_ne]
+      constructor
+      · rintro ⟨_, _, _, _, _, _, sg, _, _, _, d, _, H, hnf⟩
+        exact ⟨sg, d, H, hnf⟩
+      · rintro ⟨sg, d, H, hnf⟩
+        exact ⟨_, by rw [H]; exact upair_mem_pair _ _, _, mem_upair_right _ _,
+          _, upair_mem_pair _ _, sg, mem_upair_left _ _,
+          _, upair_mem_pair _ _, d, mem_upair_right _ _, H, hnf⟩
+    · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
+        Finset.mem_union]; omega
+  | succ j ih =>
+    intro h w x e hhw hhx hhe hwx hwe hxe
+    set m := h + w + x + e + 1 with hm
+    have b0 := (delta0_isKPair (m + 2) (m + 4) (m + 6) (by omega) (by omega)).and
+      ((delta0_isKPair e (m + 7) (m + 2) (by omega) (by omega)).and
+        ((delta0_inRanZ (m + 4) x).or
+          (ih h w x (m + 6) hhw hhx (by omega) hwx (by omega) (by omega))))
+    have b1 := b0.bex (m + 7) (m + 1) (by omega)
+    have b2 := b1.bex (m + 6) (m + 5) (by omega)
+    have b3 := b2.bex (m + 5) (m + 2) (by omega)
+    have b4 := b3.bex (m + 4) (m + 3) (by omega)
+    have b5 := b4.bex (m + 3) (m + 2) (by omega)
+    have b6 := b5.bex (m + 2) (m + 1) (by omega)
+    have b7 := b6.bex (m + 1) e (by omega)
+    refine (b7.congr ?_).of_eq ?_
+    · intro D v _ _
+      simp (disch := omega) only [notFreeBFW_succ, Function.update_self, Function.update_of_ne]
+      constructor
+      · rintro ⟨_, _, _, _, _, _, ν, _, _, _, d, _, t, _, hr, he, hR⟩
+        exact ⟨t, ν, d, by rw [he, hr], hR⟩
+      · rintro ⟨t, ν, d, H, hR⟩
+        exact ⟨_, by rw [H]; exact upair_mem_pair _ _, _, mem_upair_right _ _,
+          _, upair_mem_pair _ _, ν, mem_upair_left _ _,
+          _, upair_mem_pair _ _, d, mem_upair_right _ _, t, mem_upair_left _ _, rfl, H, hR⟩
+    · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
+        Finset.mem_union]; omega
+
+/-- `Asn_M(e, a)` of (14.1) for the code `e` of a block formula with `j` quantifier blocks: `a` is
+a finite `M`-valued assignment whose domain covers every free variable of `e`.  The remaining
+conjunct of the paper's `Asn`, "`e` is a code", is `Form_{Σ̂ j}(e)` in (14.1), i.e.
+`IsSigCodeWD`. -/
+def IsAsnBF (h w M : ZFSet.{u}) (j : ℕ) (e a : ZFSet.{u}) : Prop :=
+  IsSeqA w M a ∧ ∀ i ∈ w, ¬ NotFreeBFW h w i j e → InDomZ a i
+
+/-- `IsAsnBF` is Δ₀. -/
+theorem delta0_isAsnBF (j : ℕ) (h w M e a : ℕ) (hhw : h ≠ w) (hhe : h ≠ e) (hwM : w ≠ M)
+    (hwe : w ≠ e) (hwa : w ≠ a) (hMa : M ≠ a) :
+    Delta0Def.{u} {h, w, M, e, a} (fun _ v => IsAsnBF (v h) (v w) (v M) j (v e) (v a)) := by
+  set m := h + w + M + e + a + 1 with hm
+  have c1 := delta0_isSeqA w M a hwM hwa hMa
+  have c2 := ((delta0_notFreeBFW j h w m e hhw (by omega) hhe (by omega) hwe
+    (by omega)).not.imp (delta0_inDomZ a m (by omega))).ball m w (by omega)
+  refine ((c1.and c2).congr ?_).mono ?_
+  · intro D v _ _
+    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
+    exact Iff.rfl
+  · intro k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
+      Finset.mem_union]; omega
+
+/-- `NotFreeBFW` on the code of a `Σ̂ j` / `Π̂ j` block formula: every variable outside
+`fv b.toFm` is recognized as not free. -/
+theorem notFreeBFW_code : ∀ (j : ℕ) (b : BF), (BF.Sig j b ∨ BF.Pi j b) → ∀ k : ℕ,
+    k ∉ fv b.toFm → NotFreeBFW (L Ordinal.omega0) ωZ (natZ.{u} k) j (BF.code.{u} b) := by
+  intro j
+  induction j with
+  | zero =>
+    intro b hb k hk
+    obtain ⟨sg, φ, rfl⟩ : ∃ (sg : Bool) (φ : Fm), b = BF.delta sg φ := by
+      rcases hb with h | h
+      · cases h with | @zero sg φ _ => exact ⟨sg, φ, rfl⟩
+      · cases h with | @zero sg φ _ => exact ⟨sg, φ, rfl⟩
+    have hfv : fv (BF.delta sg φ).toFm = fv φ := by cases sg <;> simp [BF.toFm]
+    rw [hfv] at hk
+    rw [notFreeBFW_zero]
+    exact ⟨natZ (if sg then 1 else 0), φ.code, rfl, (notFreeW_code_iff k φ).mpr hk⟩
+  | succ j ih =>
+    intro b hb k hk
+    obtain ⟨t, l, ψ, hψ, hcode, hfv⟩ :
+        ∃ (t : ZFSet.{u}) (l : List ℕ) (ψ : BF), (BF.Sig j ψ ∨ BF.Pi j ψ) ∧
+          BF.code.{u} b = ZFSet.pair t (ZFSet.pair (seqOfNats.{u} l) (BF.code.{u} ψ)) ∧
+          fv b.toFm = fv ψ.toFm \ l.toFinset := by
+      rcases hb with h | h
+      · cases h with
+        | @succ _ l hl ψ hp => exact ⟨natZ 1, l, ψ, Or.inr hp, rfl, by simp [BF.toFm, Fm.fv_exs]⟩
+      · cases h with
+        | @succ _ l hl ψ hs => exact ⟨natZ 2, l, ψ, Or.inl hs, rfl, by simp [BF.toFm, Fm.fv_alls]⟩
+    rw [hfv] at hk
+    rw [notFreeBFW_succ]
+    refine ⟨t, seqOfNats.{u} l, BF.code.{u} ψ, hcode, ?_⟩
+    by_cases hkl : k ∈ l
+    · obtain ⟨n, hn⟩ : ∃ n, l[n]? = some k := List.mem_iff_getElem?.mp hkl
+      exact Or.inl ⟨natZ n, mem_seqOfNats.mpr hn⟩
+    · refine Or.inr (ih ψ hψ k ?_)
+      intro hkf
+      exact hk (Finset.mem_sdiff.mpr ⟨hkf, by simpa using hkl⟩)
+
 /-! ### Definition 14.2 over well-formed codes and the padding truth predicate -/
 
 /-- Definition 14.2, one stage.  Only codes recognized by `IsSigCodeWD` — i.e. codes of block
@@ -195,12 +348,18 @@ relativization of the fixed Δ₀ formula `Tr_{Σ̂ j}` to `M`.  The two reading
 together with `ValD (· ∈ M) {h, w}` — so the stage is stated under those hypotheses.  For every
 `M` the paper ever applies `TV_q` to, namely the set named by a hierarchy code, they hold.
 
+Following (14.1) the code variable `e` is bounded by the medium `h` — the paper's `∀e ∈ ω` —
+and only the assignment `a` is bounded by `M`.  Since `M` is transitive and `h ∈ M`, this is a
+narrower range than `∀e ∈ M`.
+
 The conjunct `IsSigCodeWD h w j e` is the paper's `Form_{Σ̂ j}(e)` of (14.1).  Since Definition
 13.4 now carries the same guard, `TrSigP D h w j e a` already implies it, so the conjunct is
-logically redundant; it is kept because (14.1) states it. -/
+logically redundant; it is kept because (14.1) states it.  The conjunct `IsAsnBF h w M j e a` is
+the paper's `Asn_M(e, a)`: the assignment must cover the free variables of `e`, not merely be an
+`M`-valued finite sequence. -/
 def TVBodyP (D : ZFSet.{u} → Prop) (h w : ZFSet.{u}) (j : ℕ) (M : ZFSet.{u}) : Prop :=
   M.IsTransitive → (∃ x, x ∈ M) → h ∈ M → w ∈ M →
-    ∀ e ∈ M, ∀ a ∈ M, IsSigCodeWD h w j e → IsSeqA w M a →
+    ∀ e ∈ h, ∀ a ∈ M, IsSigCodeWD h w j e → IsAsnBF h w M j e a →
       TrSigP D h w j e a → TrSigP (· ∈ M) h w j e a
 
 /-- The conjunction of `TVBodyP` over the stages `1, …, q`. -/
@@ -255,12 +414,14 @@ theorem piDef_TVqP (q : ℕ) (h w M : ℕ) (hhw : h ≠ w) (hhM : h ≠ M) (hwM 
       simp only [Finset.mem_insert, Finset.mem_singleton]; omega)
     have hA : Delta0Def.{u} {h, w, m} (fun _ v => IsSigCodeWD (v h) (v w) (q + 1) (v m)) :=
       delta0_isSigCodeWD (q + 1) h w m hhw (by omega) (by omega)
-    have hB : Delta0Def.{u} {w, M, m + 1} (fun _ v => IsSeqA (v w) (v M) (v (m + 1))) :=
-      delta0_isSeqA w M (m + 1) hwM (by omega) (by omega)
+    have hB : Delta0Def.{u} {h, w, M, m, m + 1} (fun _ v =>
+        IsAsnBF (v h) (v w) (v M) (q + 1) (v m) (v (m + 1))) :=
+      delta0_isAsnBF (q + 1) h w M m (m + 1) hhw (by omega) hwM (by omega) (by omega)
+        (by omega)
     have hAnt : Delta0Def.{u} {h, w, M, m, m + 1} (fun _ v =>
-        v m ∈ v M ∧ v (m + 1) ∈ v M ∧
+        v m ∈ v h ∧ v (m + 1) ∈ v M ∧
           ((v M).IsTransitive ∧ (∃ x, x ∈ v M) ∧ v h ∈ v M ∧ v w ∈ v M)) := by
-      refine ((Delta0Def.mem.{u} m M).and ((Delta0Def.mem.{u} (m + 1) M).and hP0)).of_eq ?_
+      refine ((Delta0Def.mem.{u} m h).and ((Delta0Def.mem.{u} (m + 1) M).and hP0)).of_eq ?_
       ext k
       simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union]
       tauto
@@ -269,25 +430,25 @@ theorem piDef_TVqP (q : ℕ) (h w M : ℕ) (hhw : h ≠ w) (hhM : h ≠ M) (hwM 
     have hL2 := (hA.sigma (q + 1)).imp_pi hL3
     have hL1 := (hAnt.sigma (q + 1)).imp_pi hL2
     have hL1' : PiDef (q + 1) {h, w, M, m, m + 1} (fun D v =>
-        (v m ∈ v M ∧ v (m + 1) ∈ v M ∧
+        (v m ∈ v h ∧ v (m + 1) ∈ v M ∧
           ((v M).IsTransitive ∧ (∃ x, x ∈ v M) ∧ v h ∈ v M ∧ v w ∈ v M)) →
         IsSigCodeWD (v h) (v w) (q + 1) (v m) →
-        IsSeqA (v w) (v M) (v (m + 1)) →
+        IsAsnBF (v h) (v w) (v M) (q + 1) (v m) (v (m + 1)) →
         TrSigP.{u} D (v h) (v w) (q + 1) (v m) (v (m + 1)) →
         TrSigP.{u} (· ∈ v M) (v h) (v w) (q + 1) (v m) (v (m + 1))) := by
       refine (hL1.congr ?_).of_eq ?_
-      · intro D v _ _
-        have key : ∀ (_ : v m ∈ v M ∧ v (m + 1) ∈ v M ∧
+      · intro D v hDgood hDval
+        have key : ∀ (_ : v m ∈ v h ∧ v (m + 1) ∈ v M ∧
             ((v M).IsTransitive ∧ (∃ x, x ∈ v M) ∧ v h ∈ v M ∧ v w ∈ v M)),
             (Q D v ↔ TrSigP.{u} (· ∈ v M) (v h) (v w) (q + 1) (v m) (v (m + 1))) := by
           rintro ⟨hem, ham, htr, hne, hhm', hwm'⟩
-          refine hQiff D v (goodDom_mem htr hne) ?_
+          refine hQiff D v hDgood (hDval M (by simp)) (goodDom_mem htr hne) ?_
           intro i hi
           simp only [Finset.mem_insert, Finset.mem_singleton] at hi
           rcases hi with rfl | rfl | rfl | rfl
           · exact hhm'
           · exact hwm'
-          · exact hem
+          · exact htr _ hhm' hem
           · exact ham
         constructor
         · intro H hant h1 h2 h3
@@ -297,7 +458,7 @@ theorem piDef_TVqP (q : ℕ) (h w M : ℕ) (hhw : h ≠ w) (hhM : h ≠ M) (hwM 
       · ext k
         simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union]
         omega
-    have hball := (hL1'.ball (m + 1) M (by omega) (by omega)).ball m M (by omega) (by omega)
+    have hball := (hL1'.ball (m + 1) M (by omega) (by omega)).ball m h (by omega) (by omega)
     have hbody : PiDef (q + 1) {h, w, M}
         (fun D v => TVBodyP.{u} D (v h) (v w) (q + 1) (v M)) := by
       refine (hball.congr ?_).of_eq ?_
@@ -329,24 +490,43 @@ truth predicate. -/
 theorem tvqP_iff_elemHat_general {ξ θ : Ordinal.{u}} (hθ : GoodOrd θ) (hξ : GoodOrd ξ)
     (hlt : ξ < θ) {q : ℕ} (hq : 1 ≤ q) :
     TVqP (· ∈ L θ) (L Ordinal.omega0) ωZ q (L ξ) ↔ ElemHat q (L ξ) (L θ) := by
-  have _hq := hq
   have hsub : L ξ ⊆ L θ := L_mono hlt.le
   have hLω : L Ordinal.omega0.{u} ⊆ L ξ := L_mono hξ.omega_lt.le
   have hemp : (∅ : ZFSet.{u}) ∈ L ξ := hξ.wClosed.empty_mem
   constructor
   · -- `TV` gives elementarity: normalise `φ` to a block formula, then use Theorem 13.6 twice.
     intro hconj
-    refine elemHat_of_downward hξ.transitive hθ.transitive hsub ?_
+    refine elemHat_of_downward hq hξ.transitive hθ.transitive hsub ?_
     intro j hj1 hj2 φ hφ v hv hsatθ
+    classical
     obtain ⟨b, hbSig, hbnd, -, hbsat⟩ := (exists_norm.{u} j).1 0 φ hφ
     have hnb : b.NodupBlocks := BF.nodupBlocks_of_blockVars_nodup hbnd
-    obtain ⟨a, ha, -, haval⟩ := exists_seq_of_val (fv φ) v hv
+    -- The assignment must cover the free variables of the *code*, i.e. of `b.toFm`, not only
+    -- those of `φ`; outside `fv φ` it may take any value of `L ξ`, and takes `∅`.
+    have hv' : ∀ k ∈ fv φ ∪ fv b.toFm, (if k ∈ fv φ then v k else (∅ : ZFSet.{u})) ∈ L ξ := by
+      intro k _
+      by_cases hk : k ∈ fv φ
+      · rw [if_pos hk]; exact hv k hk
+      · rw [if_neg hk]; exact hemp
+    obtain ⟨a, ha, hadom, haval⟩ :=
+      exists_seq_of_val (fv φ ∪ fv b.toFm) (fun k => if k ∈ fv φ then v k else ∅) hv'
     have haξ : a ∈ L ξ := isSeqA_mem_of_wClosed hξ.wClosed ha
+    have hasn : IsAsnBF (L Ordinal.omega0) ωZ (L ξ) j (BF.code.{u} b) a := by
+      refine ⟨ha, ?_⟩
+      intro i hi hnf
+      obtain ⟨k, rfl⟩ := mem_ωZ_iff.mp hi
+      by_contra hnd
+      exact hnf (notFreeBFW_code j b (Or.inl hbSig) k
+        (fun hk => hnd (hadom k (Finset.mem_union_right _ hk))))
     have hcodeξ : BF.code.{u} b ∈ L ξ := hLω (BF.code_mem_Lω b)
     have hGξ : GoodAsnQ (L ξ) b a := ⟨ha, haξ, hnb, hcodeξ, hξ.wClosed⟩
     have hGθ : GoodAsnQ (L θ) b a :=
       ⟨isSeqA_of_subset ha hsub, hsub haξ, hnb, hsub hcodeξ, hθ.wClosed⟩
-    have hagree : ∀ x ∈ fv φ, v x = SeqVal a x := fun x hx => (haval x hx).symm
+    have hagree : ∀ x ∈ fv φ, v x = SeqVal a x := by
+      intro x hx
+      have hx' := haval x (Finset.mem_union_left _ hx)
+      simp only [if_pos hx] at hx'
+      exact hx'.symm
     have hsat1 : Sat (· ∈ L θ) (SeqVal a) φ := (sat_congr hagree).mp hsatθ
     have hsat2 : Sat (· ∈ L θ) (SeqVal a) b.toFm :=
       (hbsat _ ⟨ωZ, hθ.omegaZ_mem⟩ (SeqVal a)).mpr hsat1
@@ -354,8 +534,8 @@ theorem tvqP_iff_elemHat_general {ξ θ : Ordinal.{u}} (hθ : GoodOrd θ) (hξ :
       (trSigQ_correct hθ.transitive hθ.base j b hbSig a hGθ).mpr hsat2
     have htrξ : TrSigP (· ∈ L ξ) (L Ordinal.omega0) ωZ j (BF.code.{u} b) a :=
       tvBodyP_of_tvConjP q j hj1 hj2 hconj hξ.transitive ⟨ωZ, hξ.omegaZ_mem⟩
-        hξ.Lomega_mem hξ.omegaZ_mem (BF.code.{u} b) hcodeξ a haξ
-        ((isSigCodeWD_iff j _).mpr ⟨b, hbSig, hnb, rfl⟩) ha htrθ
+        hξ.Lomega_mem hξ.omegaZ_mem (BF.code.{u} b) (BF.code_mem_Lω b) a haξ
+        ((isSigCodeWD_iff j _).mpr ⟨b, hbSig, hnb, rfl⟩) hasn htrθ
     have hsat3 : Sat (· ∈ L ξ) (SeqVal a) b.toFm :=
       (trSigQ_correct hξ.transitive hξ.base j b hbSig a hGξ).mp htrξ
     have hsat4 : Sat (· ∈ L ξ) (SeqVal a) φ :=
@@ -371,11 +551,12 @@ theorem tvqP_iff_elemHat_general {ξ θ : Ordinal.{u}} (hθ : GoodOrd θ) (hξ :
       | succ p ih =>
         intro hp
         refine ⟨ih (by omega), ?_⟩
-        intro _ _ _ _ e he a ha hcode hseq htr
+        intro _ _ _ _ e he a ha hcode hasn htr
         obtain ⟨b, hbSig, hnb, rfl⟩ := (isSigCodeWD_iff (p + 1) e).mp hcode
-        have hGξ : GoodAsnQ (L ξ) b a := ⟨hseq, ha, hnb, he, hξ.wClosed⟩
+        have hseq : IsSeqA ωZ (L ξ) a := hasn.1
+        have hGξ : GoodAsnQ (L ξ) b a := ⟨hseq, ha, hnb, hLω he, hξ.wClosed⟩
         have hGθ : GoodAsnQ (L θ) b a :=
-          ⟨isSeqA_of_subset hseq hsub, hsub ha, hnb, hsub he, hθ.wClosed⟩
+          ⟨isSeqA_of_subset hseq hsub, hsub ha, hnb, hsub (hLω he), hθ.wClosed⟩
         have hsatθ : Sat (· ∈ L θ) (SeqVal a) b.toFm :=
           (trSigQ_correct hθ.transitive hθ.base (p + 1) b hbSig a hGθ).mp htr
         have hval : ValIn (L ξ) (fv b.toFm) (SeqVal a) :=

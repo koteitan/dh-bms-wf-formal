@@ -22,8 +22,17 @@ def Delta0Collection (W : ZFSet.{u}) : Prop :=
       (∀ x ∈ a, ∃ y ∈ W, P (· ∈ W) (Function.update (Function.update v i x) j y)) →
       ∃ b ∈ W, ∀ x ∈ a, ∃ y ∈ b, P (· ∈ W) (Function.update (Function.update v i x) j y)
 
-/-- Admissible ordinals: `θ > ω`, a limit, and `L θ` satisfies Δ₀-Collection. This is equivalent
-to `L θ ⊨ KP` (the remaining axioms hold in every `L θ` with `θ > ω` a limit). -/
+/-- Admissible ordinals: `θ > ω`, a limit, and `L θ` satisfies Δ₀-Collection.
+
+The paper defines "`θ` is admissible" as `L θ ⊨ KP`, where KP consists of Extensionality, Empty
+Set, Pairing, Union, Infinity, Δ₀-Separation, Δ₀-Collection and Set Induction.  The triple used
+here is equivalent to that: the seven axioms other than Δ₀-Collection hold in `L θ` for every
+limit `θ > ω`, and conversely `ω < θ` and the limit property follow from the truth of the KP
+axioms in `L θ`.  The equivalence is not available at this point in the development — the KP
+axioms are formulas of `Bm4/SetTheory/KPAx.lean`, which is downstream of this file — and is
+proved there: `KPSat.satIn_kpAx` (this triple implies every KP axiom is true in `L θ`),
+`KPSat.isAdmissible_of_kpTrue`, and `AdmKP.omega_lt_of_kpTrue` / `AdmKP.isSuccLimit_of_kpTrue`
+(the converse). -/
 def IsAdmissible (θ : Ordinal.{u}) : Prop :=
   Ordinal.omega0 < θ ∧ Order.IsSuccLimit θ ∧ Delta0Collection (L θ)
 

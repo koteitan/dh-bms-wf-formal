@@ -846,12 +846,15 @@ theorem TSet_mem_L (hθ : IsAdmissible θ) {A : ZFSet.{u}} (hA : A ∈ L θ) :
       · rintro ⟨a, ha, hcov, rfl, hs⟩
         exact ⟨⟨_, ZFSet.mem_singleton.mpr rfl, a, mem_SeqsFrom.mpr ⟨ha, hcov⟩, rfl⟩,
           a, mem_SeqsFrom.mpr ⟨ha, hcov⟩, rfl,
-          _, seqVal_mem_of_inDom ha (hcov i (by simp [Fm.fv])), (valAt_iff ha.1).mpr rfl,
-          _, seqVal_mem_of_inDom ha (hcov j (by simp [Fm.fv])), (valAt_iff ha.1).mpr rfl, hs⟩
+          _, seqVal_mem_of_inDom ha (hcov i (by simp [Fm.fv])),
+          (valAt_iff ha.1 (hcov i (by simp [Fm.fv]))).mpr rfl,
+          _, seqVal_mem_of_inDom ha (hcov j (by simp [Fm.fv])),
+          (valAt_iff ha.1 (hcov j (by simp [Fm.fv]))).mpr rfl, hs⟩
       · rintro ⟨-, a, haS, rfl, x, hx, hxv, y, hy, hyv, hxy⟩
         obtain ⟨ha, hcov⟩ := mem_SeqsFrom.mp haS
         refine ⟨a, ha, hcov, rfl, ?_⟩
-        rw [valAt_iff ha.1] at hxv hyv
+        rw [valAt_iff ha.1 (hcov i (by simp [Fm.fv]))] at hxv
+        rw [valAt_iff ha.1 (hcov j (by simp [Fm.fv]))] at hyv
         show SeqVal a i = SeqVal a j
         rw [← hxv, ← hyv]; exact hxy
     rw [hE]
@@ -885,12 +888,15 @@ theorem TSet_mem_L (hθ : IsAdmissible θ) {A : ZFSet.{u}} (hA : A ∈ L θ) :
       · rintro ⟨a, ha, hcov, rfl, hs⟩
         exact ⟨⟨_, ZFSet.mem_singleton.mpr rfl, a, mem_SeqsFrom.mpr ⟨ha, hcov⟩, rfl⟩,
           a, mem_SeqsFrom.mpr ⟨ha, hcov⟩, rfl,
-          _, seqVal_mem_of_inDom ha (hcov i (by simp [Fm.fv])), (valAt_iff ha.1).mpr rfl,
-          _, seqVal_mem_of_inDom ha (hcov j (by simp [Fm.fv])), (valAt_iff ha.1).mpr rfl, hs⟩
+          _, seqVal_mem_of_inDom ha (hcov i (by simp [Fm.fv])),
+          (valAt_iff ha.1 (hcov i (by simp [Fm.fv]))).mpr rfl,
+          _, seqVal_mem_of_inDom ha (hcov j (by simp [Fm.fv])),
+          (valAt_iff ha.1 (hcov j (by simp [Fm.fv]))).mpr rfl, hs⟩
       · rintro ⟨-, a, haS, rfl, x, hx, hxv, y, hy, hyv, hxy⟩
         obtain ⟨ha, hcov⟩ := mem_SeqsFrom.mp haS
         refine ⟨a, ha, hcov, rfl, ?_⟩
-        rw [valAt_iff ha.1] at hxv hyv
+        rw [valAt_iff ha.1 (hcov i (by simp [Fm.fv]))] at hxv
+        rw [valAt_iff ha.1 (hcov j (by simp [Fm.fv]))] at hyv
         show SeqVal a i ∈ SeqVal a j
         rw [← hxv, ← hyv]; exact hxy
     rw [hE]
@@ -1206,12 +1212,13 @@ theorem tClause_correct {A C t : ZFSet.{u}}
       hi hj]
     constructor
     · rintro ⟨x, -, hx, y, -, hy, hxy⟩
-      rw [valAt_iff ha.1] at hx hy
+      rw [valAt_iff ha.1 hi] at hx
+      rw [valAt_iff ha.1 hj] at hy
       show SeqVal a i = SeqVal a j
       rw [← hx, ← hy]; exact hxy
     · intro h
-      exact ⟨_, seqVal_mem_of_inDom ha hi, (valAt_iff ha.1).mpr rfl,
-        _, seqVal_mem_of_inDom ha hj, (valAt_iff ha.1).mpr rfl, h⟩
+      exact ⟨_, seqVal_mem_of_inDom ha hi, (valAt_iff ha.1 hi).mpr rfl,
+        _, seqVal_mem_of_inDom ha hj, (valAt_iff ha.1 hj).mpr rfl, h⟩
   | mem i j =>
     intro hc a ha hcov
     have hi := hcov i (by simp [Fm.fv])
@@ -1220,12 +1227,13 @@ theorem tClause_correct {A C t : ZFSet.{u}}
       hi hj]
     constructor
     · rintro ⟨x, -, hx, y, -, hy, hxy⟩
-      rw [valAt_iff ha.1] at hx hy
+      rw [valAt_iff ha.1 hi] at hx
+      rw [valAt_iff ha.1 hj] at hy
       show SeqVal a i ∈ SeqVal a j
       rw [← hx, ← hy]; exact hxy
     · intro h
-      exact ⟨_, seqVal_mem_of_inDom ha hi, (valAt_iff ha.1).mpr rfl,
-        _, seqVal_mem_of_inDom ha hj, (valAt_iff ha.1).mpr rfl, h⟩
+      exact ⟨_, seqVal_mem_of_inDom ha hi, (valAt_iff ha.1 hi).mpr rfl,
+        _, seqVal_mem_of_inDom ha hj, (valAt_iff ha.1 hj).mpr rfl, h⟩
   | imp φ ψ ihφ ihψ =>
     intro hc a ha hcov
     have hcφ : ∀ k ∈ Fm.fv φ, InDomZ a (natZ k) := fun k hk =>
@@ -1311,10 +1319,11 @@ theorem tClause_Cs {A : ZFSet.{u}} (φ : Fm) :
     rw [pair_code_mem_TSet_sub hT]
     constructor
     · rintro ⟨-, -, hs⟩
-      exact ⟨_, seqVal_mem_of_inDom ha hdi, (valAt_iff ha.1).mpr rfl,
-        _, seqVal_mem_of_inDom ha hdj, (valAt_iff ha.1).mpr rfl, hs⟩
+      exact ⟨_, seqVal_mem_of_inDom ha hdi, (valAt_iff ha.1 hdi).mpr rfl,
+        _, seqVal_mem_of_inDom ha hdj, (valAt_iff ha.1 hdj).mpr rfl, hs⟩
     · rintro ⟨x, -, hx, y, -, hy, hxy⟩
-      rw [valAt_iff ha.1] at hx hy
+      rw [valAt_iff ha.1 hdi] at hx
+      rw [valAt_iff ha.1 hdj] at hy
       exact ⟨ha, hcov, show SeqVal a m = SeqVal a n by rw [← hx, ← hy]; exact hxy⟩
   · intro i _ j _ hshape hdi hdj
     obtain ⟨m, n, rfl, rfl, rfl⟩ := code_eq_mem hshape
@@ -1327,10 +1336,11 @@ theorem tClause_Cs {A : ZFSet.{u}} (φ : Fm) :
     rw [pair_code_mem_TSet_sub hT]
     constructor
     · rintro ⟨-, -, hs⟩
-      exact ⟨_, seqVal_mem_of_inDom ha hdi, (valAt_iff ha.1).mpr rfl,
-        _, seqVal_mem_of_inDom ha hdj, (valAt_iff ha.1).mpr rfl, hs⟩
+      exact ⟨_, seqVal_mem_of_inDom ha hdi, (valAt_iff ha.1 hdi).mpr rfl,
+        _, seqVal_mem_of_inDom ha hdj, (valAt_iff ha.1 hdj).mpr rfl, hs⟩
     · rintro ⟨x, -, hx, y, -, hy, hxy⟩
-      rw [valAt_iff ha.1] at hx hy
+      rw [valAt_iff ha.1 hdi] at hx
+      rw [valAt_iff ha.1 hdj] at hy
       exact ⟨ha, hcov, show SeqVal a m ∈ SeqVal a n by rw [← hx, ← hy]; exact hxy⟩
   · intro e₁ _ e₂ _ hshape hA1 hA2
     obtain ⟨χ₁, χ₂, rfl, rfl, rfl⟩ := code_eq_imp hshape
@@ -1767,6 +1777,360 @@ theorem exists_limit_between (hθ : IsAdmissible θ) {ζ : Ordinal.{u}} (hζ : �
   ⟨ζ + Ordinal.omega0, Ordinal.isSuccLimit_add _ Ordinal.isSuccLimit_omega0,
     le_self_add, add_omega0_lt hθ hζ⟩
 
+
+/-! ### Lemma 10.4(2): the transitive closure `TC(X)` -/
+
+/-- One step of the recursion of Lemma 10.4(2): `y = x ∪ ⋃ x`. -/
+def IsTCStep (x y : ZFSet.{u}) : Prop := y = x ∪ ZFSet.sUnion x
+
+theorem isTCStep_iff_bounded (x y : ZFSet.{u}) :
+    IsTCStep x y ↔ (∀ z ∈ y, z ∈ x ∨ ∃ u ∈ x, z ∈ u) ∧ (∀ z ∈ x, z ∈ y) ∧
+      (∀ u ∈ x, ∀ z ∈ u, z ∈ y) := by
+  unfold IsTCStep
+  constructor
+  · rintro rfl
+    refine ⟨fun z hz => ?_, fun z hz => ZFSet.mem_union.mpr (Or.inl hz),
+      fun u hu z hz => ZFSet.mem_union.mpr (Or.inr (ZFSet.mem_sUnion.mpr ⟨u, hu, hz⟩))⟩
+    rcases ZFSet.mem_union.mp hz with h | h
+    · exact Or.inl h
+    · exact Or.inr (ZFSet.mem_sUnion.mp h)
+  · rintro ⟨h1, h2, h3⟩
+    ext z
+    rw [ZFSet.mem_union]
+    constructor
+    · intro hz
+      rcases h1 z hz with h | ⟨u, hu, hzu⟩
+      · exact Or.inl h
+      · exact Or.inr (ZFSet.mem_sUnion.mpr ⟨u, hu, hzu⟩)
+    · rintro (h | h)
+      · exact h2 z h
+      · obtain ⟨u, hu, hzu⟩ := ZFSet.mem_sUnion.mp h
+        exact h3 u hu z hzu
+
+theorem delta0_isTCStep (x y : ℕ) :
+    Delta0Def {x, y} (fun _ v => IsTCStep (v x) (v y)) := by
+  set m := x + y + 1 with hm
+  -- `z := m`, `u := m + 1`
+  have a1 := (((Delta0Def.mem m x).or
+    ((Delta0Def.mem m (m + 1)).bex (m + 1) x (by omega))).ball m y (by omega))
+  have a2 := (Delta0Def.mem m y).ball m x (by omega)
+  have a3 := ((Delta0Def.mem m y).ball m (m + 1) (by omega)).ball (m + 1) x (by omega)
+  refine ((a1.and (a2.and a3)).congr ?_).mono ?_
+  · intro D v _ _
+    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
+    exact (isTCStep_iff_bounded (v x) (v y)).symm
+  · intro k hk
+    simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
+      Finset.mem_union] at hk ⊢
+    omega
+
+/-- The stages `R₀ = X`, `R_{n+1} = R_n ∪ ⋃ R_n` of Lemma 10.4(2). -/
+noncomputable def tcSeq (X : ZFSet.{u}) : ℕ → ZFSet.{u}
+  | 0 => X
+  | n + 1 => tcSeq X n ∪ ZFSet.sUnion (tcSeq X n)
+
+theorem tcSeq_zero (X : ZFSet.{u}) : tcSeq X 0 = X := rfl
+
+theorem tcSeq_succ (X : ZFSet.{u}) (n : ℕ) :
+    tcSeq X (n + 1) = tcSeq X n ∪ ZFSet.sUnion (tcSeq X n) := rfl
+
+theorem tcSeq_mem_L {θ : Ordinal.{u}} (hlim : Order.IsSuccLimit θ) {X : ZFSet.{u}}
+    (hX : X ∈ L θ) : ∀ n : ℕ, tcSeq X n ∈ L θ
+  | 0 => hX
+  | n + 1 => union_mem_L_of_limit hlim (tcSeq_mem_L hlim hX n)
+      (sUnion_mem_L_of_limit hlim (tcSeq_mem_L hlim hX n))
+
+theorem tcSeq_subset_succ (X : ZFSet.{u}) (n : ℕ) : ∀ z ∈ tcSeq X n, z ∈ tcSeq X (n + 1) :=
+  fun _ hz => ZFSet.mem_union.mpr (Or.inl hz)
+
+theorem tcSeq_mono (X : ZFSet.{u}) {m n : ℕ} (h : m ≤ n) : ∀ z ∈ tcSeq X m, z ∈ tcSeq X n := by
+  induction n with
+  | zero => intro z hz; rwa [Nat.le_zero.mp h] at hz
+  | succ n ih =>
+    intro z hz
+    rcases Nat.lt_succ_iff_lt_or_eq.mp (Nat.lt_succ_of_le h) with hlt | rfl
+    · exact tcSeq_subset_succ X n z (ih (by omega) z hz)
+    · exact hz
+
+/-- The finite function `natZ m ↦ tcSeq X m` for `m ≤ n`. -/
+noncomputable def tcF (X : ZFSet.{u}) : ℕ → ZFSet.{u}
+  | 0 => ({ZFSet.pair (natZ 0) (tcSeq X 0)} : ZFSet.{u})
+  | n + 1 => insert (ZFSet.pair (natZ (n + 1)) (tcSeq X (n + 1))) (tcF X n)
+
+/-- Its range. -/
+noncomputable def tcR (X : ZFSet.{u}) : ℕ → ZFSet.{u}
+  | 0 => ({tcSeq X 0} : ZFSet.{u})
+  | n + 1 => insert (tcSeq X (n + 1)) (tcR X n)
+
+theorem mem_tcF {X p : ZFSet.{u}} : ∀ {n : ℕ},
+    p ∈ tcF X n ↔ ∃ m ≤ n, p = ZFSet.pair (natZ m) (tcSeq X m)
+  | 0 => by
+    show p ∈ ({ZFSet.pair (natZ.{u} 0) (tcSeq X 0)} : ZFSet.{u}) ↔ _
+    rw [ZFSet.mem_singleton]
+    exact ⟨fun h => ⟨0, le_rfl, h⟩, fun ⟨m, hm, h⟩ => by rwa [Nat.le_zero.mp hm] at h⟩
+  | n + 1 => by
+    show p ∈ insert (ZFSet.pair (natZ.{u} (n + 1)) (tcSeq X (n + 1))) (tcF X n) ↔ _
+    rw [ZFSet.mem_insert_iff, mem_tcF]
+    constructor
+    · rintro (rfl | ⟨m, hm, rfl⟩)
+      · exact ⟨n + 1, le_rfl, rfl⟩
+      · exact ⟨m, by omega, rfl⟩
+    · rintro ⟨m, hm, rfl⟩
+      rcases Nat.eq_or_lt_of_le hm with rfl | hlt
+      · exact Or.inl rfl
+      · exact Or.inr ⟨m, by omega, rfl⟩
+
+theorem mem_tcR {X z : ZFSet.{u}} : ∀ {n : ℕ}, z ∈ tcR X n ↔ ∃ m ≤ n, z = tcSeq X m
+  | 0 => by
+    show z ∈ ({tcSeq X 0} : ZFSet.{u}) ↔ _
+    rw [ZFSet.mem_singleton]
+    exact ⟨fun h => ⟨0, le_rfl, h⟩, fun ⟨m, hm, h⟩ => by rwa [Nat.le_zero.mp hm] at h⟩
+  | n + 1 => by
+    show z ∈ insert (tcSeq X (n + 1)) (tcR X n) ↔ _
+    rw [ZFSet.mem_insert_iff, mem_tcR]
+    constructor
+    · rintro (rfl | ⟨m, hm, rfl⟩)
+      · exact ⟨n + 1, le_rfl, rfl⟩
+      · exact ⟨m, by omega, rfl⟩
+    · rintro ⟨m, hm, rfl⟩
+      rcases Nat.eq_or_lt_of_le hm with rfl | hlt
+      · exact Or.inl rfl
+      · exact Or.inr ⟨m, by omega, rfl⟩
+
+theorem tcF_mem_L {θ : Ordinal.{u}} (hlim : Order.IsSuccLimit θ) {X : ZFSet.{u}} (hX : X ∈ L θ)
+    (hnat : ∀ n : ℕ, natZ.{u} n ∈ L θ) : ∀ n : ℕ, tcF X n ∈ L θ
+  | 0 => singleton_mem_L_of_limit hlim
+      (kpair_mem_L_of_limit hlim (hnat 0) (tcSeq_mem_L hlim hX 0))
+  | n + 1 => insert_mem_L_of_limit hlim
+      (kpair_mem_L_of_limit hlim (hnat (n + 1)) (tcSeq_mem_L hlim hX (n + 1)))
+      (tcF_mem_L hlim hX hnat n)
+
+theorem tcR_mem_L {θ : Ordinal.{u}} (hlim : Order.IsSuccLimit θ) {X : ZFSet.{u}} (hX : X ∈ L θ) :
+    ∀ n : ℕ, tcR X n ∈ L θ
+  | 0 => singleton_mem_L_of_limit hlim (tcSeq_mem_L hlim hX 0)
+  | n + 1 => insert_mem_L_of_limit hlim (tcSeq_mem_L hlim hX (n + 1)) (tcR_mem_L hlim hX n)
+
+theorem isFunc_tcF (X : ZFSet.{u}) (n : ℕ) : IsFunc (tcF X n) := by
+  constructor
+  · intro p hp
+    obtain ⟨m, -, rfl⟩ := mem_tcF.mp hp
+    exact ⟨_, _, rfl⟩
+  · intro a b b' hb hb'
+    obtain ⟨m, -, hm⟩ := mem_tcF.mp hb
+    obtain ⟨m', -, hm'⟩ := mem_tcF.mp hb'
+    rw [ZFSet.pair_inj] at hm hm'
+    have : m = m' := natZ_injective (hm.1.symm.trans hm'.1)
+    rw [hm.2, hm'.2, this]
+
+theorem isRan_tcF (X : ZFSet.{u}) (n : ℕ) : IsRan (tcF X n) (tcR X n) := by
+  intro z
+  rw [mem_tcR]
+  constructor
+  · rintro ⟨m, hm, rfl⟩
+    exact ⟨natZ m, mem_tcF.mpr ⟨m, hm, rfl⟩⟩
+  · rintro ⟨a, ha⟩
+    obtain ⟨m, hm, hp⟩ := mem_tcF.mp ha
+    rw [ZFSet.pair_inj] at hp
+    exact ⟨m, hm, hp.2⟩
+
+theorem isDom_tcF (X : ZFSet.{u}) (n : ℕ) : IsDom (tcF X n) (natZ (n + 1)) := by
+  intro a
+  constructor
+  · intro ha
+    obtain ⟨m, hm, rfl⟩ := mem_natZ_iff.mp ha
+    exact ⟨tcSeq X m, mem_tcF.mpr ⟨m, by omega, rfl⟩⟩
+  · rintro ⟨b, hb⟩
+    obtain ⟨m, hm, hp⟩ := mem_tcF.mp hb
+    rw [ZFSet.pair_inj] at hp
+    rw [hp.1]
+    exact natZ_mem_natZ_iff.mpr (by omega)
+
+/-- **Lemma 10.4(2)**: every set `X` is contained in a least transitive set `TC(X)`.
+(Semantic form: inside `L θ` for an admissible `θ`.) -/
+theorem exists_tc {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {X : ZFSet.{u}} (hX : X ∈ L θ) :
+    ∃ T ∈ L θ, X ⊆ T ∧ T.IsTransitive ∧
+      ∀ Y : ZFSet.{u}, X ⊆ Y → Y.IsTransitive → T ⊆ Y := by
+  have hlim := hθ.isSuccLimit
+  have he : (∅ : ZFSet.{u}) ∈ L θ := empty_mem_L_of_limit hlim
+  have hω : ωZ.{u} ∈ L θ := hθ.omega_mem
+  have hnat : ∀ n : ℕ, natZ.{u} n ∈ L θ := fun n => natZ_mem_L hθ.omega_lt n
+  -- the Δ₀ description of "`Y` is a chain of stages of length `d`, with range `R`"
+  have hQ : Delta0Def ({0, 1, 2, 3, 4, 5} : Finset ℕ) (fun _ v =>
+      IsFunc (v 2) ∧ (IsRan (v 2) (v 3) ∧ (ZFSet.pair (v 5) (v 4) ∈ v 2 ∧
+        ∃ d ∈ v 1, IsDom (v 2) d ∧ (v 0 ∈ d ∧
+          ∀ m ∈ d, ∀ s ∈ d, ∀ w ∈ v 3, ∀ w' ∈ v 3,
+            ((s = insert m m ∧ ZFSet.pair m w ∈ v 2) ∧ ZFSet.pair s w' ∈ v 2) →
+              IsTCStep w w')))) := by
+    have step := ((((((delta0_isSucc 8 7 (by omega)).and
+        (delta0_funVal 2 7 9 (by omega) (by omega) (by omega))).and
+        (delta0_funVal 2 8 10 (by omega) (by omega) (by omega))).imp
+        (delta0_isTCStep 9 10)).ball 10 3 (by omega)).ball 9 3
+        (by omega)).ball 8 6 (by omega)
+    have step2 := step.ball 7 6 (by omega)
+    have dpart := ((delta0_isDom 2 6 (by omega)).and
+      ((Delta0Def.mem 0 6).and step2)).bex 6 1 (by omega)
+    have h := (delta0_isFunc 2).and ((delta0_isRan 2 3 (by omega)).and
+      ((delta0_funVal 2 5 4 (by omega) (by omega) (by omega)).and dpart))
+    exact (h.congr (by
+      intro D v _ _
+      simp (disch := omega) only [Function.update_self, Function.update_of_ne])).mono (by decide)
+  obtain ⟨b, hb, hbmem⟩ := collect3 hθ hQ (v := valT ωZ.{u} X ∅ ∅ ∅)
+    (fun k _ _ _ _ => hvT hω hX he he he he k)
+    (by simpa (disch := omega) only [valT, Function.update_self, Function.update_of_ne] using hω)
+    (by
+      intro nn hnn
+      simp (disch := omega) only [valT, Function.update_self, Function.update_of_ne] at hnn ⊢
+      obtain ⟨k, rfl⟩ := mem_ωZ_iff.mp hnn
+      refine ⟨tcF X k, tcF_mem_L hlim hX hnat k, tcR X k, tcR_mem_L hlim hX k,
+        isFunc_tcF X k, isRan_tcF X k, mem_tcF.mpr ⟨0, Nat.zero_le k, rfl⟩,
+        natZ (k + 1), natZ_mem_ωZ (k + 1), isDom_tcF X k,
+        natZ_mem_natZ_iff.mpr (by omega), ?_⟩
+      rintro m hm s hs w hw w' hw' ⟨⟨hsucc, hmw⟩, hsw⟩
+      obtain ⟨pm, -, rfl⟩ := mem_natZ_iff.mp hm
+      obtain ⟨qs, -, rfl⟩ := mem_natZ_iff.mp hs
+      obtain ⟨mw, -, rfl⟩ := mem_tcR.mp hw
+      obtain ⟨mw2, -, rfl⟩ := mem_tcR.mp hw'
+      have hq : qs = pm + 1 := natZ_injective hsucc
+      obtain ⟨m1, -, h1⟩ := mem_tcF.mp hmw
+      rw [ZFSet.pair_inj] at h1
+      have hpm1 : pm = m1 := natZ_injective h1.1
+      obtain ⟨m2, -, h2⟩ := mem_tcF.mp hsw
+      rw [ZFSet.pair_inj] at h2
+      have hqs2 : qs = m2 := natZ_injective h2.1
+      rw [h2.2, h1.2, ← hqs2, ← hpm1, hq]
+      rfl)
+  simp (disch := omega) only [valT, Function.update_self, Function.update_of_ne] at hbmem
+  -- every chain in `b` computes the stages
+  have hchainval : ∀ Y R : ZFSet.{u}, ∀ l : ℕ, IsFunc Y → IsRan Y R →
+      ZFSet.pair (natZ.{u} 0) X ∈ Y → IsDom Y (natZ.{u} l) →
+      (∀ m ∈ natZ.{u} l, ∀ s ∈ natZ.{u} l, ∀ w ∈ R, ∀ w' ∈ R,
+        ((s = insert m m ∧ ZFSet.pair m w ∈ Y) ∧ ZFSet.pair s w' ∈ Y) → IsTCStep w w') →
+      ∀ m, m < l → ZFSet.pair (natZ.{u} m) (tcSeq X m) ∈ Y := by
+    intro Y R l hf hr hbase hdom hstep m
+    induction m with
+    | zero => intro _; exact hbase
+    | succ m ih =>
+      intro hml
+      have hm : m < l := by omega
+      have h1 := ih hm
+      obtain ⟨w', hw'⟩ := (hdom (natZ (m + 1))).mp (natZ_mem_natZ_iff.mpr hml)
+      have hwR : tcSeq X m ∈ R := (hr _).mpr ⟨natZ m, h1⟩
+      have hw'R : w' ∈ R := (hr _).mpr ⟨natZ (m + 1), hw'⟩
+      have hEq := hstep (natZ m) (natZ_mem_natZ_iff.mpr hm) (natZ (m + 1))
+        (natZ_mem_natZ_iff.mpr hml) (tcSeq X m) hwR w' hw'R ⟨⟨rfl, h1⟩, hw'⟩
+      rw [tcSeq_succ, ← hEq]
+      exact hw'
+  -- the Δ₀ condition picking out the elements of the stages
+  have hC : Delta0Def ({0, 1, 2, 3, 4} : Finset ℕ) (fun _ v =>
+      ∃ Y ∈ v 1, ∃ R ∈ v 1, IsFunc Y ∧ (IsRan Y R ∧ (ZFSet.pair (v 4) (v 3) ∈ Y ∧
+        ∃ d ∈ v 2, IsDom Y d ∧
+          ((∀ m ∈ d, ∀ s ∈ d, ∀ w ∈ R, ∀ w' ∈ R,
+            ((s = insert m m ∧ ZFSet.pair m w ∈ Y) ∧ ZFSet.pair s w' ∈ Y) → IsTCStep w w') ∧
+            ∃ w ∈ R, v 0 ∈ w)))) := by
+    have step := ((((((delta0_isSucc 9 8 (by omega)).and
+        (delta0_funVal 5 8 10 (by omega) (by omega) (by omega))).and
+        (delta0_funVal 5 9 11 (by omega) (by omega) (by omega))).imp
+        (delta0_isTCStep 10 11)).ball 11 6 (by omega)).ball 10 6
+        (by omega)).ball 9 7 (by omega)
+    have step2 := step.ball 8 7 (by omega)
+    have last := (Delta0Def.mem 0 12).bex 12 6 (by omega)
+    have dpart := ((delta0_isDom 5 7 (by omega)).and (step2.and last)).bex 7 2 (by omega)
+    have body := (delta0_isFunc 5).and ((delta0_isRan 5 6 (by omega)).and
+      ((delta0_funVal 5 4 3 (by omega) (by omega) (by omega)).and dpart))
+    have h := (body.bex 6 1 (by omega)).bex 5 1 (by omega)
+    exact (h.congr (by
+      intro D v _ _
+      simp (disch := omega) only [Function.update_self, Function.update_of_ne])).mono (by decide)
+  set V : ZFSet.{u} := ZFSet.sUnion (ZFSet.sUnion (ZFSet.sUnion b)) with hVdef
+  have hVL : V ∈ L θ := sUnion_mem_L_of_limit hlim (sUnion_mem_L_of_limit hlim
+    (sUnion_mem_L_of_limit hlim hb))
+  have hstageV : ∀ k : ℕ, tcSeq X k ∈ V := by
+    intro k
+    obtain ⟨Y, hY, R, hR, hf, hr, hbase, d, hd, hdom, hkd, hstep⟩ :=
+      hbmem (natZ k) (natZ_mem_ωZ k)
+    obtain ⟨l, rfl⟩ := mem_ωZ_iff.mp hd
+    have hkl : k < l := natZ_mem_natZ_iff.mp hkd
+    have key := hchainval Y R l hf hr hbase hdom hstep k hkl
+    refine ZFSet.mem_sUnion.mpr ⟨({natZ k, tcSeq X k} : ZFSet.{u}), ?_, mem_upair_right _ _⟩
+    refine ZFSet.mem_sUnion.mpr ⟨ZFSet.pair (natZ k) (tcSeq X k), ?_, upair_mem_pair _ _⟩
+    exact ZFSet.mem_sUnion.mpr ⟨Y, hY, key⟩
+  -- the transitive closure itself
+  set P : ZFSet.{u} → Prop := fun z => ∃ k : ℕ, z ∈ tcSeq X k with hPdef
+  have hchar : ∀ z : ZFSet.{u},
+      (∃ Y ∈ b, ∃ R ∈ b, IsFunc Y ∧ (IsRan Y R ∧ (ZFSet.pair (∅ : ZFSet.{u}) X ∈ Y ∧
+        ∃ d ∈ ωZ.{u}, IsDom Y d ∧
+          ((∀ m ∈ d, ∀ s ∈ d, ∀ w ∈ R, ∀ w' ∈ R,
+            ((s = insert m m ∧ ZFSet.pair m w ∈ Y) ∧ ZFSet.pair s w' ∈ Y) → IsTCStep w w') ∧
+            ∃ w ∈ R, z ∈ w)))) ↔ P z := by
+    intro z
+    constructor
+    · rintro ⟨Y, hY, R, hR, hf, hr, hbase, d, hd, hdom, hstep, w, hw, hzw⟩
+      obtain ⟨l, rfl⟩ := mem_ωZ_iff.mp hd
+      obtain ⟨a, ha⟩ := (hr w).mp hw
+      have had : a ∈ natZ.{u} l := (hdom a).mpr ⟨w, ha⟩
+      obtain ⟨m, hml, rfl⟩ := mem_natZ_iff.mp had
+      have := hchainval Y R l hf hr hbase hdom hstep m hml
+      rw [hf.2 _ w (tcSeq X m) ha this] at hzw
+      exact ⟨m, hzw⟩
+    · rintro ⟨k, hzk⟩
+      obtain ⟨Y, hY, R, hR, hf, hr, hbase, d, hd, hdom, hkd, hstep⟩ :=
+        hbmem (natZ k) (natZ_mem_ωZ k)
+      obtain ⟨l, rfl⟩ := mem_ωZ_iff.mp hd
+      have hkl : k < l := natZ_mem_natZ_iff.mp hkd
+      have key := hchainval Y R l hf hr hbase hdom hstep k hkl
+      exact ⟨Y, hY, R, hR, hf, hr, hbase, natZ l, natZ_mem_ωZ l, hdom, hstep,
+        tcSeq X k, (hr _).mpr ⟨natZ k, key⟩, hzk⟩
+  have hVUL : ZFSet.sUnion V ∈ L θ := sUnion_mem_L_of_limit hlim hVL
+  have hTL : ZFSet.sep P (ZFSet.sUnion V) ∈ L θ := by
+    refine sepL hθ hC (v := Function.update (Function.update (Function.update
+      (Function.update (fun _ => (∅ : ZFSet.{u})) 1 b) 2 ωZ.{u}) 3 X) 4 ∅) ?_ hVUL P ?_
+    · intro k hk hk0
+      simp only [Finset.mem_insert, Finset.mem_singleton] at hk
+      have : k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by omega
+      rcases this with rfl | rfl | rfl | rfl
+      · simpa (disch := omega) only [Function.update_self, Function.update_of_ne] using hb
+      · simpa (disch := omega) only [Function.update_self, Function.update_of_ne] using hω
+      · simpa (disch := omega) only [Function.update_self, Function.update_of_ne] using hX
+      · simpa (disch := omega) only [Function.update_self, Function.update_of_ne] using he
+    · intro z
+      simp (disch := omega) only [Function.update_self, Function.update_of_ne]
+      exact hchar z
+  refine ⟨ZFSet.sep P (ZFSet.sUnion V), hTL, ?_, ?_, ?_⟩
+  · intro z hz
+    exact ZFSet.mem_sep.mpr ⟨ZFSet.mem_sUnion.mpr ⟨tcSeq X 0, hstageV 0, hz⟩, 0, hz⟩
+  · intro w hw z hzw
+    obtain ⟨-, k, hwk⟩ := ZFSet.mem_sep.mp hw
+    have hzk : z ∈ tcSeq X (k + 1) :=
+      ZFSet.mem_union.mpr (Or.inr (ZFSet.mem_sUnion.mpr ⟨w, hwk, hzw⟩))
+    exact ZFSet.mem_sep.mpr
+      ⟨ZFSet.mem_sUnion.mpr ⟨tcSeq X (k + 1), hstageV (k + 1), hzk⟩, k + 1, hzk⟩
+  · intro Y hXY hYtr z hz
+    obtain ⟨-, k, hzk⟩ := ZFSet.mem_sep.mp hz
+    have hsub : ∀ n : ℕ, ∀ x ∈ tcSeq X n, x ∈ Y := by
+      intro n
+      induction n with
+      | zero => intro x hx; exact hXY hx
+      | succ n ih =>
+        intro x hx
+        rcases ZFSet.mem_union.mp hx with h | h
+        · exact ih x h
+        · obtain ⟨u, hu, hxu⟩ := ZFSet.mem_sUnion.mp h
+          exact hYtr.subset_of_mem (ih u hu) hxu
+    exact hsub k z hzk
+
+/-! ### Lemma 10.4(3): a transitive, pair- and union-closed superset -/
+
+/-- **Lemma 10.4(3)**: for every set `X` there is a set `U` with `X ⊆ U`, `U` transitive and
+`PUCl(U)`.  (Semantic form: inside `L θ` for an admissible `θ`.) -/
+theorem exists_puCl_superset {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {X : ZFSet.{u}}
+    (hX : X ∈ L θ) : ∃ U ∈ L θ, X ⊆ U ∧ U.IsTransitive ∧ PUCl U := by
+  have hlim := hθ.isSuccLimit
+  obtain ⟨ζ, hζ, hXζ⟩ := (mem_L_limit hlim).mp hX
+  obtain ⟨ξ, hξlim, hξge, hξlt⟩ := exists_limit_between hθ hζ
+  refine ⟨L ξ, L_mem_L hξlt, fun z hz => (L_transitive ξ).subset_of_mem (L_mono hξge hXζ) hz,
+    L_transitive ξ, fun x hx y hy => ?_⟩
+  exact ⟨pair_mem_L_of_limit hξlim hx hy, sUnion_mem_L_of_limit hξlim hx⟩
+
 /-! ### Lemma 10.5(1): satisfaction codes exist inside an admissible `L θ` -/
 
 theorem satCode_exists_in_L {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {A : ZFSet.{u}}
@@ -1775,15 +2139,15 @@ theorem satCode_exists_in_L {θ : Ordinal.{u}} (hθ : IsAdmissible θ) {A : ZFSe
   have hlim := hθ.isSuccLimit
   have hT : TruthSet A ∈ L θ := truthSet_mem_L hθ hA
   have hω : ωZ.{u} ∈ L θ := hθ.omega_mem
-  obtain ⟨ζ₁, hζ₁, hA'⟩ := (mem_L_limit hlim).mp hA
-  obtain ⟨ζ₂, hζ₂, hT'⟩ := (mem_L_limit hlim).mp hT
-  obtain ⟨ζ₃, hζ₃, hω'⟩ := (mem_L_limit hlim).mp hω
-  obtain ⟨ξ, hξlim, hξge, hξlt⟩ := exists_limit_between hθ
-    (show max ζ₁ (max ζ₂ ζ₃) < θ from max_lt hζ₁ (max_lt hζ₂ hζ₃))
-  exact ⟨L ξ, L_mem_L hξlt, TruthSet A, hT, satCode_truthSet (L_transitive ξ)
-    (L_mono ((le_max_left _ _).trans hξge) hA')
-    (L_mono (((le_max_left _ _).trans (le_max_right _ _)).trans hξge) hT')
-    (L_mono (((le_max_right _ _).trans (le_max_right _ _)).trans hξge) hω')
-    (fun x hx y hy => ⟨pair_mem_L_of_limit hξlim hx hy, sUnion_mem_L_of_limit hξlim hx⟩)⟩
+  -- Lemma 10.4(3) applied to `{A, ω, T}`, exactly as in the paper's proof of Lemma 10.5(1)
+  have hXL : (insert A (insert ωZ.{u} (insert (TruthSet A) (∅ : ZFSet.{u})))) ∈ L θ :=
+    insert_mem_L_of_limit hlim hA
+      (insert_mem_L_of_limit hlim hω
+        (insert_mem_L_of_limit hlim hT (empty_mem_L_of_limit hlim)))
+  obtain ⟨U, hUL, hXU, hUtrans, hUpucl⟩ := exists_puCl_superset hθ hXL
+  have hAU : A ∈ U := hXU (by simp)
+  have hωU : ωZ.{u} ∈ U := hXU (by simp)
+  have hTU : TruthSet A ∈ U := hXU (by simp)
+  exact ⟨U, hUL, TruthSet A, hT, satCode_truthSet hUtrans hAU hTU hωU hUpucl⟩
 
 end BM4.ST

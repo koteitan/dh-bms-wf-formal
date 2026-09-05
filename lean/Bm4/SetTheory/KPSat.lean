@@ -120,24 +120,51 @@ theorem satIn_unionAx {θ : Ordinal.{u}} (hθ : Order.IsSuccLimit θ) (v : ℕ �
   simp (disch := omega) only [sat_mem, Function.update_self, Function.update_of_ne] at hb hz ⊢
   exact ZFSet.mem_sUnion.mpr ⟨b, hb, hz⟩
 
+/-- **Infinity.**  The witness is `ω` itself: it contains `∅` and is closed under
+`u ↦ u ∪ {u} = insert u u`, which is what the three Δ₀ conjuncts of `infAx` express. -/
 theorem satIn_infAx {θ : Ordinal.{u}} (h : IsAdmissible θ) (v : ℕ → ZFSet.{u}) :
     SatIn (L θ) v infAx := by
-  have hT := L_transitive θ
   have hω : ωZ.{u} ∈ L θ := h.omega_mem
   simp only [infAx, SatIn, sat_ex, sat_and]
-  refine ⟨ωZ, hω, ⟨natZ 0, natZ_mem_L h.omega_lt 0, ?_⟩, ?_⟩
-  · simp (disch := omega) only [sat_mem, Function.update_self, Function.update_of_ne]
-    exact natZ_mem_ωZ 0
-  · rw [sat_ball_of_ne (show (1 : ℕ) ≠ 0 by decide)]
+  refine ⟨ωZ, hω, ?_, ?_⟩
+  · -- `∅ ∈ ω`, rendered as `∃ y ∈ ω, ∀ z ∈ y, ⊥`
+    rw [sat_bex_of_ne (show (1 : ℕ) ≠ 0 by decide)]
+    refine ⟨natZ 0, natZ_mem_L h.omega_lt 0, ?_, ?_⟩
+    · simp only [Function.update_self]
+      exact natZ_mem_ωZ 0
+    · rw [sat_ball_of_ne (show (2 : ℕ) ≠ 1 by decide)]
+      intro z _ hz
+      simp only [Function.update_self] at hz
+      rw [show natZ.{u} 0 = ∅ from rfl] at hz
+      exact absurd hz (ZFSet.notMem_empty z)
+  · -- closure under the successor `u ↦ insert u u`
+    rw [sat_ball_of_ne (show (1 : ℕ) ≠ 0 by decide)]
     intro a _ ha
     simp only [Function.update_self] at ha
-    rw [sat_bex_of_ne (show (2 : ℕ) ≠ 0 by decide)]
     obtain ⟨n, rfl⟩ := mem_ωZ_iff.mp ha
+    rw [sat_bex_of_ne (show (2 : ℕ) ≠ 0 by decide)]
     refine ⟨natZ (n + 1), natZ_mem_L h.omega_lt _, ?_, ?_⟩
     · simp (disch := omega) only [Function.update_self, Function.update_of_ne]
       exact natZ_mem_ωZ _
-    · simp (disch := omega) only [sat_mem, Function.update_self, Function.update_of_ne]
-      exact natZ_mem_natZ_iff.mpr (by omega)
+    · refine sat_and.mpr ⟨?_, sat_and.mpr ⟨?_, ?_⟩⟩
+      · -- `u ∈ v`
+        simp (disch := omega) only [sat_mem, Function.update_self, Function.update_of_ne]
+        exact natZ_mem_natZ_iff.mpr (Nat.lt_succ_self n)
+      · -- `u ⊆ v`
+        rw [sat_ball_of_ne (show (3 : ℕ) ≠ 1 by decide)]
+        intro w _ hw
+        simp (disch := omega) only [sat_mem, Function.update_self, Function.update_of_ne] at hw ⊢
+        rw [show natZ.{u} (n + 1) = insert (natZ.{u} n) (natZ.{u} n) from rfl]
+        exact ZFSet.mem_insert_of_mem _ hw
+      · -- `v ⊆ u ∪ {u}`
+        rw [sat_ball_of_ne (show (3 : ℕ) ≠ 2 by decide)]
+        intro w _ hw
+        simp only [Function.update_self] at hw
+        rw [show natZ.{u} (n + 1) = insert (natZ.{u} n) (natZ.{u} n) from rfl,
+          ZFSet.mem_insert_iff] at hw
+        simp (disch := omega) only [sat_or, sat_mem, sat_eq, Function.update_self,
+          Function.update_of_ne]
+        exact hw.symm
 
 /-! ### Δ₀-Separation -/
 
@@ -261,7 +288,7 @@ theorem satIn_kpAx {θ : Ordinal.{u}} (h : IsAdmissible θ) {d : ZFSet.{u}}
   have hlim := h.isSuccLimit
   intro φ hcode v hv
   rcases (kpAxCode_iff d).mp hd with H | H | H | H | H |
-    ⟨ψ, i, j, x, y, hψ, -, hy, hij, hix, hiy, hjx, hjy, hxy, l, χ, hχ, -, H⟩ |
+    ⟨ψ, i, j, x, y, hψ, hy, hij, hix, hiy, hjx, hjy, hxy, l, χ, hχ, -, H⟩ |
     ⟨ψ, i, j, hi, hij, l, -, H⟩
   · have : φ = extAx := Fm.code_injective (hcode.symm.trans H)
     subst this; exact satIn_extAx v
@@ -324,8 +351,7 @@ theorem isAdmissible_of_kpTrue {η : Ordinal.{u}} (homega : Ordinal.omega0 < η)
     · intro k hk; have : k ≤ s.sup id := Finset.le_sup (f := id) hk; omega
   have hcode : KPAxCode (L Ordinal.omega0) ωZ
       (Fm.code.{u} (Fm.alls (Fm.fv (collAx φ i j N (N + 1))).toList (collAx φ i j N (N + 1)))) :=
-    kpAxCode_coll hφΔ (notFree_of_vars_lt hvarsN le_rfl)
-      (notFree_of_vars_lt hvarsN (by omega)) hij
+    kpAxCode_coll hφΔ (notFree_of_vars_lt hvarsN (by omega)) hij
       (by omega) (by omega) (by omega) (by omega) (by omega) _
       (subset_toList_toFinset _)
   -- a valuation with values in `L η` agreeing with `v` on the parameters

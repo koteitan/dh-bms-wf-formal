@@ -86,20 +86,21 @@ theorem passing {k : ℕ} (h1 : b.Claim1 k) (h5 : b.Claim5 k) {a c' i j : ℕ}
 /-! ### Transporting a copy-internal tail between copies, and the bridge -/
 
 /-- `(C1)_k` moves a copy-internal (non-strict) ancestor relation from one copy to any other. -/
-theorem ancEq_transport {k q q' i j : ℕ} (h1 : b.Claim1 k) (hi : i < b.s) (hj : j < b.s)
+theorem ancEq_transport {k q q' i j : ℕ} (h1 : b.Claim1 k) (hq : q ≤ b.N) (hq' : q' ≤ b.N)
+    (hi : i < b.s) (hj : j < b.s)
     (h : ancEq b.tA k (b.pos q i) (b.pos q j)) : ancEq b.tA k (b.pos q' i) (b.pos q' j) := by
   rcases h with heq | h
   · obtain ⟨-, rfl⟩ := b.pos_inj hi hj heq
     exact ancEq_refl _ _ _
-  · exact Or.inr ((h1 q' i j hi hj).mpr ((h1 q i j hi hj).mp h))
+  · exact Or.inr ((h1 q' hq' i j hi hj).mpr ((h1 q hq i j hi hj).mp h))
 
 /-- The bridge between consecutive leading columns, for `k < m₀`: `(C3)_k` applied to index `0`,
 whose counterpart `P ≺ₖ C` holds in `A` because `p` is the `m₀`-parent of `C`. -/
-theorem lead_bridge {k : ℕ} (hk : k < b.m) (h3 : b.Claim3 k) (c' : ℕ) :
+theorem lead_bridge {k : ℕ} (hk : k < b.m) (h3 : b.Claim3 k) {c' : ℕ} (hc' : c' + 1 ≤ b.N) :
     anc b.tA k (b.pos c' 0) (b.pos (c' + 1) 0) := by
   have hpc : anc A k (b.p + 0) (A.len - 1) := by
     simpa using b.anc_p_c hk.le
-  have h := (h3 (c' + 1) 0 (by omega) b.s_pos).mpr hpc
+  have h := (h3 (c' + 1) hc' 0 (by omega) b.s_pos).mpr hpc
   simpa using h
 
 /-! ### Lemma 6.8 -/
@@ -107,21 +108,21 @@ theorem lead_bridge {k : ℕ} (hk : k < b.m) (h3 : b.Claim3 k) (c' : ℕ) :
 /-- **Lemma 6.8** (local proof V). -/
 theorem lemma_6_8 {k : ℕ} (h1 : b.Claim1 k) (h5 : b.Claim5 k)
     (h34 : (k < b.m → b.Claim3 k) ∧ (b.m ≤ k → b.Claim4)) : b.Claim6 k := by
-  intro a c' i j hac hi hj
+  intro a c' hac hc' i j hi hj
   rcases lt_or_ge k b.m with hk | hk
   · -- low rows: both sides hold, linked by the bridge `P⁽ᶜ'⁾ ≺ₖ P⁽ᶜ'⁺¹⁾`
-    have hbr : anc b.tA k (b.pos c' 0) (b.pos (c' + 1) 0) := b.lead_bridge hk (h34.1 hk) c'
+    have hbr : anc b.tA k (b.pos c' 0) (b.pos (c' + 1) 0) := b.lead_bridge hk (h34.1 hk) hc'
     constructor
     · intro h
       obtain ⟨hA, hT⟩ := b.passing h1 h5 hac hi hj h
       exact anc_of_anc_of_ancEq (anc_trans hA hbr)
-        (b.ancEq_transport (q := c') (q' := c' + 1) h1 b.s_pos hj hT)
+        (b.ancEq_transport (q := c') (q' := c' + 1) h1 (by omega) hc' b.s_pos hj hT)
     · intro h
       obtain ⟨hA, hT⟩ := b.passing h1 h5 (show a < c' + 1 by omega) hi hj h
       have hA' : anc b.tA k (b.pos a i) (b.pos c' 0) :=
         anc_of_anc_of_anc_of_lt hA hbr (b.pos_lt_pos_of_lt hac hi)
       exact anc_of_anc_of_ancEq hA'
-        (b.ancEq_transport (q := c' + 1) (q' := c') h1 b.s_pos hj hT)
+        (b.ancEq_transport (q := c' + 1) (q' := c') h1 hc' (by omega) b.s_pos hj hT)
   · -- high rows: `(C4)` makes both sides false
     have h4 : b.Claim4 := h34.2 hk
     have hp : b.p ≤ b.pos a i := b.p_le_pos a i

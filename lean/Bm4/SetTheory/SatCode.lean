@@ -17,9 +17,9 @@ open Fm Classical
 
 /-! ### Values, finite sequences, updates -/
 
-/-- `x` is the value of the sequence `a` at index `i` (default `∅`). -/
+/-- `Val(a, i, x)` of §8.1: `i` lies in the domain of the sequence `a` and `a(i) = x`. -/
 def ValAt (a i x : ZFSet.{u}) : Prop :=
-  ZFSet.pair i x ∈ a ∨ ((∀ y, ZFSet.pair i y ∉ a) ∧ x = ∅)
+  ZFSet.pair i x ∈ a
 
 /-- `a` is a finite sequence over `A`: a function with domain an element of `w` (a natural
 number when `w = ωZ`) and values in `A`. -/
@@ -32,7 +32,7 @@ def InDomZ (a i : ZFSet.{u}) : Prop := ∃ y, ZFSet.pair i y ∈ a
 /-- `Asn_A(e, a)` of (8.4): `a` is an appropriate `A`-valued assignment for the code `e`, i.e.
 a finite sequence over `A` whose domain covers every free variable of `e`. -/
 def IsAsn (h w A e a : ZFSet.{u}) : Prop :=
-  IsSeqA w A a ∧ ∀ i ∈ w, ¬ NotFreeW h w i e → InDomZ a i
+  IsSeqA w A a ∧ (∀ i ∈ w, ¬ NotFreeW h w i e → InDomZ a i) ∧ IsCodeW h w e
 
 /-- The bounded form of `InDomZ`. -/
 theorem inDomZ_iff_bounded (a i : ZFSet.{u}) :
@@ -53,13 +53,18 @@ theorem notFreeW_code_iff (k : ℕ) (φ : Fm) :
     exact hk
   · exact fun h => ⟨φ, rfl, h⟩
 
-/-- `IsAsn` on the code of `φ`: the domain of `a` covers `fv φ`. -/
+/-- `IsAsn` on the code of `φ`: the `Form(e)` conjunct is automatic and the domain of `a` covers
+`fv φ`. -/
 theorem isAsn_code_iff {A a : ZFSet.{u}} {φ : Fm} :
     IsAsn (L Ordinal.omega0) ωZ A φ.code a ↔
       IsSeqA ωZ A a ∧ ∀ k ∈ Fm.fv φ, InDomZ a (natZ k) := by
-  refine and_congr Iff.rfl ⟨fun H k hk => ?_, fun H i hi hnf => ?_⟩
-  · exact H (natZ k) (natZ_mem_ωZ k) (by rw [notFreeW_code_iff]; exact fun h => h hk)
-  · obtain ⟨k, rfl⟩ := mem_ωZ_iff.mp hi
+  constructor
+  · rintro ⟨hs, H, -⟩
+    refine ⟨hs, fun k hk => ?_⟩
+    exact H (natZ k) (natZ_mem_ωZ k) (by rw [notFreeW_code_iff]; exact fun h => h hk)
+  · rintro ⟨hs, H⟩
+    refine ⟨hs, fun i hi hnf => ?_, (isCodeW_iff _).mpr ⟨φ, rfl⟩⟩
+    obtain ⟨k, rfl⟩ := mem_ωZ_iff.mp hi
     rw [notFreeW_code_iff] at hnf
     exact H k (not_not.mp hnf)
 
@@ -86,11 +91,6 @@ def IsUpdSeq (a i x b : ZFSet.{u}) : Prop :=
   ∀ p, p ∈ b ↔ p = ZFSet.pair i x ∨ (p ∈ a ∧ ∀ y, p ≠ ZFSet.pair i y) ∨
     (∃ j ∈ i, (∀ y, ZFSet.pair j y ∉ a) ∧ p = ZFSet.pair j x)
 
-/-- `b` is `a` padded with pairs `⟨k, ∅⟩`, i.e. with the default value of an index outside the
-domain.  Padding does not change any value of the sequence. -/
-def IsPadOf (a b : ZFSet.{u}) : Prop :=
-  a ⊆ b ∧ ∀ p ∈ b, p ∈ a ∨ ∃ k, p = ZFSet.pair k ∅
-
 /-- The value of a sequence at a natural-number index (default `∅`). -/
 noncomputable def SeqVal (a : ZFSet.{u}) (i : ℕ) : ZFSet.{u} :=
   if h : ∃ x, ZFSet.pair (natZ i) x ∈ a then Classical.choose h else ∅
@@ -112,39 +112,16 @@ theorem seqVal_of_notMem {a : ZFSet.{u}} {i : ℕ} (h : ∀ y, ZFSet.pair (natZ 
   rintro ⟨y, hy⟩
   exact h y hy
 
-theorem valAt_iff {a : ZFSet.{u}} (hf : IsFunc a) {i : ℕ} {x : ZFSet.{u}} :
-    ValAt a (natZ i) x ↔ x = SeqVal a i := by
-  unfold ValAt
+/-- On its domain, `Val(a, i, x)` says that `x` is the value `SeqVal a i`. -/
+theorem valAt_iff {a : ZFSet.{u}} (hf : IsFunc a) {i : ℕ} (hi : InDomZ a (natZ i))
+    {x : ZFSet.{u}} : ValAt a (natZ i) x ↔ x = SeqVal a i := by
+  obtain ⟨y, hy⟩ := hi
+  rw [seqVal_spec hf hy]
   constructor
-  · rintro (h | ⟨h, rfl⟩)
-    · exact (seqVal_spec hf h).symm
-    · exact (seqVal_of_notMem h).symm
+  · intro h
+    exact hf.2 _ _ _ h hy
   · rintro rfl
-    by_cases h : ∃ y, ZFSet.pair (natZ i) y ∈ a
-    · obtain ⟨y, hy⟩ := h
-      left; rw [seqVal_spec hf hy]; exact hy
-    · right
-      push Not at h
-      exact ⟨h, seqVal_of_notMem h⟩
-
-/-- Padding with `∅` does not change the values of a sequence. -/
-theorem seqVal_of_isPadOf {a b : ZFSet.{u}} (hfa : IsFunc a) (hfb : IsFunc b)
-    (h : IsPadOf a b) : SeqVal b = SeqVal a := by
-  funext k
-  by_cases hex : ∃ y, ZFSet.pair (natZ k) y ∈ a
-  · obtain ⟨y, hy⟩ := hex
-    rw [seqVal_spec hfa hy, seqVal_spec hfb (h.1 hy)]
-  · push Not at hex
-    rw [seqVal_of_notMem hex]
-    by_cases hexb : ∃ z, ZFSet.pair (natZ k) z ∈ b
-    · obtain ⟨z, hz⟩ := hexb
-      rw [seqVal_spec hfb hz]
-      rcases h.2 _ hz with h1 | ⟨k', h1⟩
-      · exact absurd h1 (hex z)
-      · rw [ZFSet.pair_inj] at h1
-        exact h1.2
-    · push Not at hexb
-      exact seqVal_of_notMem hexb
+    exact hy
 
 theorem seqVal_mem_of_inDom {A a : ZFSet.{u}} (ha : IsSeqA ωZ A a) {i : ℕ}
     (h : InDomZ a (natZ i)) : SeqVal a i ∈ A := by
@@ -319,6 +296,29 @@ theorem exists_updSeq {A a : ZFSet.{u}} (ha : IsSeqA ωZ A a) (i : ℕ) {x : ZFS
       exact seqVal_spec hfb ((hup _).mpr (Or.inl rfl))
 
 /-! ### Satisfaction codes (Definition 8.3) -/
+
+/-! ### Definition 8.1: `PUCl` -/
+
+/-- Definition 8.1: `U` is closed under unordered pairs and unions. -/
+def PUCl (U : ZFSet.{u}) : Prop :=
+  ∀ x ∈ U, ∀ y ∈ U, ({x, y} : ZFSet.{u}) ∈ U ∧ ZFSet.sUnion x ∈ U
+
+theorem delta0_puCl (U : ℕ) : Delta0Def {U} (fun _ v => PUCl (v U)) := by
+  set m := U + 1 with hm
+  have p1 := (delta0_isUPair (m + 2) m (m + 1) (by omega) (by omega)).bex (m + 2) U (by omega)
+  have p2 := (delta0_isSUnion (m + 3) m (by omega)).bex (m + 3) U (by omega)
+  have p3 := (p1.and p2).ball (m + 1) U (by omega)
+  have p4 := p3.ball m U (by omega)
+  refine (p4.congr ?_).mono ?_
+  · intro D v _ _
+    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
+    apply forall_congr'; intro x; apply imp_congr_right; intro _
+    apply forall_congr'; intro y; apply imp_congr_right; intro _
+    apply and_congr
+    · exact ⟨fun ⟨_, hp, e⟩ => e ▸ hp, fun H => ⟨_, H, rfl⟩⟩
+    · exact ⟨fun ⟨_, hp, e⟩ => e ▸ hp, fun H => ⟨_, H, rfl⟩⟩
+  · intro k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
+      Finset.mem_union]; omega
 
 /-- Definition 8.3, a satisfaction code for the structure `(A, ∈)`: `U` is a transitive auxiliary
 set closed under pairs and unions containing `A`, `T`, `w`; `T` consists of pairs `⟨e, a⟩` of a
@@ -553,46 +553,54 @@ theorem updSeq_mem_of_puCl {U a b x : ZFSet.{u}} (hU : U.IsTransitive) (hω : ω
 
 /-! ### Lemma 8.4: correctness -/
 
-theorem valAt_iff' {a : ZFSet.{u}} (hf : IsFunc a) (i : ℕ) (x : ZFSet.{u}) :
-    ValAt a (natZ i) x ↔ x = SeqVal a i := valAt_iff hf
+theorem valAt_iff' {a : ZFSet.{u}} (hf : IsFunc a) (i : ℕ) (hi : InDomZ a (natZ i))
+    (x : ZFSet.{u}) : ValAt a (natZ i) x ↔ x = SeqVal a i := valAt_iff hf hi
 
-/-- Lemma 8.4 (8.6): correctness of any satisfaction code, on appropriate pairs. -/
+/-- Lemma 8.4 (8.6): correctness of any satisfaction code, on appropriate pairs.  As in the
+paper, membership `a ∈ U` is not assumed: it follows from the appropriateness of `a` by
+Lemma 8.2 (`seq_mem_of_puCl`). -/
 theorem satCode_correct {A U T : ZFSet.{u}} (hc : SatCode (L Ordinal.omega0) ωZ A U T) (φ : Fm) :
-    ∀ a, IsSeqA ωZ A a → (∀ k ∈ Fm.fv φ, InDomZ a (natZ k)) → a ∈ U →
+    ∀ a, IsSeqA ωZ A a → (∀ k ∈ Fm.fv φ, InDomZ a (natZ k)) →
       (ZFSet.pair φ.code a ∈ T ↔ SatIn A (SeqVal a) φ) := by
   induction φ with
   | falsum =>
-    intro a ha _ haU
+    intro a ha _
+    have haU : a ∈ U := seq_mem_of_puCl hc.trans hc.A_mem hc.w_mem hc.pucl ha
     simp only [Fm.code, SatIn, sat_falsum, iff_false]
     exact hc.falsum a haU ha
   | eq i j =>
-    intro a ha hcov haU
+    intro a ha hcov
+    have haU : a ∈ U := seq_mem_of_puCl hc.trans hc.A_mem hc.w_mem hc.pucl ha
     have hi : InDomZ a (natZ i) := hcov i (by simp [Fm.fv])
     have hj : InDomZ a (natZ j) := hcov j (by simp [Fm.fv])
     simp only [Fm.code, SatIn, sat_eq]
     rw [hc.eq _ (natZ_mem_ωZ i) _ (natZ_mem_ωZ j) a haU ha hi hj]
     constructor
     · rintro ⟨x, _, hx, y, _, hy, rfl⟩
-      rw [valAt_iff ha.1] at hx hy
+      rw [valAt_iff ha.1 hi] at hx
+      rw [valAt_iff ha.1 hj] at hy
       rw [← hx, ← hy]
     · intro h
-      exact ⟨_, seqVal_mem_of_inDom ha hi, (valAt_iff ha.1).mpr rfl,
-        _, seqVal_mem_of_inDom ha hj, (valAt_iff ha.1).mpr rfl, h⟩
+      exact ⟨_, seqVal_mem_of_inDom ha hi, (valAt_iff ha.1 hi).mpr rfl,
+        _, seqVal_mem_of_inDom ha hj, (valAt_iff ha.1 hj).mpr rfl, h⟩
   | mem i j =>
-    intro a ha hcov haU
+    intro a ha hcov
+    have haU : a ∈ U := seq_mem_of_puCl hc.trans hc.A_mem hc.w_mem hc.pucl ha
     have hi : InDomZ a (natZ i) := hcov i (by simp [Fm.fv])
     have hj : InDomZ a (natZ j) := hcov j (by simp [Fm.fv])
     simp only [Fm.code, SatIn, sat_mem]
     rw [hc.mem _ (natZ_mem_ωZ i) _ (natZ_mem_ωZ j) a haU ha hi hj]
     constructor
     · rintro ⟨x, _, hx, y, _, hy, hxy⟩
-      rw [valAt_iff ha.1] at hx hy
+      rw [valAt_iff ha.1 hi] at hx
+      rw [valAt_iff ha.1 hj] at hy
       rw [← hx, ← hy]; exact hxy
     · intro h
-      exact ⟨_, seqVal_mem_of_inDom ha hi, (valAt_iff ha.1).mpr rfl,
-        _, seqVal_mem_of_inDom ha hj, (valAt_iff ha.1).mpr rfl, h⟩
+      exact ⟨_, seqVal_mem_of_inDom ha hi, (valAt_iff ha.1 hi).mpr rfl,
+        _, seqVal_mem_of_inDom ha hj, (valAt_iff ha.1 hj).mpr rfl, h⟩
   | imp φ ψ ihφ ihψ =>
-    intro a ha hcov haU
+    intro a ha hcov
+    have haU : a ∈ U := seq_mem_of_puCl hc.trans hc.A_mem hc.w_mem hc.pucl ha
     have hcφ : ∀ k ∈ Fm.fv φ, InDomZ a (natZ k) := fun k hk =>
       hcov k (by simp only [Fm.fv, Finset.mem_union]; exact Or.inl hk)
     have hcψ : ∀ k ∈ Fm.fv ψ, InDomZ a (natZ k) := fun k hk =>
@@ -601,9 +609,10 @@ theorem satCode_correct {A U T : ZFSet.{u}} (hc : SatCode (L Ordinal.omega0) ωZ
     rw [hc.imp _ (Fm.code_mem_Lω φ) _ (Fm.code_mem_Lω ψ) ((isCodeW_iff _).mpr ⟨φ, rfl⟩)
       ((isCodeW_iff _).mpr ⟨ψ, rfl⟩) a haU (isAsn_code_iff.mpr ⟨ha, hcφ⟩)
       (isAsn_code_iff.mpr ⟨ha, hcψ⟩)]
-    rw [ihφ a ha hcφ haU, ihψ a ha hcψ haU]
+    rw [ihφ a ha hcφ, ihψ a ha hcψ]
   | all i φ ih =>
-    intro a ha hcov haU
+    intro a ha hcov
+    have haU : a ∈ U := seq_mem_of_puCl hc.trans hc.A_mem hc.w_mem hc.pucl ha
     simp only [Fm.fv] at hcov
     simp only [Fm.code, SatIn, sat_all]
     rw [hc.all _ (natZ_mem_ωZ i) _ (Fm.code_mem_Lω φ) ((isCodeW_iff _).mpr ⟨φ, rfl⟩) a haU ha
@@ -624,7 +633,7 @@ theorem satCode_correct {A U T : ZFSet.{u}} (hc : SatCode (L Ordinal.omega0) ωZ
         · exact hbval k (Or.inr hki)
         · exact hbval k (Or.inl (hcov k (Finset.mem_erase.mpr ⟨hki, hk⟩)))
       rw [isUpdSeq_unique hb hb']
-      exact ⟨(ih b' hbseq hbcov hbU).trans (sat_congr hagree), hbU⟩
+      exact ⟨(ih b' hbseq hbcov).trans (sat_congr hagree), hbU⟩
     constructor
     · intro H x hx
       obtain ⟨b, hb, -, -, -⟩ := exists_updSeq ha i hx
@@ -633,18 +642,81 @@ theorem satCode_correct {A U T : ZFSet.{u}} (hc : SatCode (L Ordinal.omega0) ωZ
     · intro H x hx b hbU hb
       exact (key x hx b hb).1.mpr (H x hx)
 
+/-! ### The paper's clauses for `¬`, `∧`, `∃`
+
+The primitive connectives of `Fm` are `⊥`, `→`, `∀`, so `SatCode` states Definition 8.3 for
+those.  The paper's own clauses — the Tarski clauses for `¬` and `∧` (condition 4) and the
+clause for `∃` (condition 5) — hold for the derived connectives, by Lemma 8.4.
+-/
+
+/-- Definition 8.3, condition 4 for `¬`: `⟨⌜¬φ⌝, a⟩ ∈ T ↔ ⟨⌜φ⌝, a⟩ ∉ T`. -/
+theorem satCode_not {A U T : ZFSet.{u}} (hc : SatCode (L Ordinal.omega0) ωZ A U T) (φ : Fm)
+    (a : ZFSet.{u}) (ha : IsSeqA ωZ A a) (hcov : ∀ k ∈ Fm.fv φ, InDomZ a (natZ k)) :
+    ZFSet.pair (Fm.not φ).code a ∈ T ↔ ZFSet.pair φ.code a ∉ T := by
+  rw [satCode_correct hc (Fm.not φ) a ha (by simpa using hcov),
+    satCode_correct hc φ a ha hcov]
+  exact sat_not
+
+/-- Definition 8.3, condition 4 for `∧`: `⟨⌜φ ∧ ψ⌝, a⟩ ∈ T ↔ ⟨⌜φ⌝, a⟩ ∈ T ∧ ⟨⌜ψ⌝, a⟩ ∈ T`. -/
+theorem satCode_and {A U T : ZFSet.{u}} (hc : SatCode (L Ordinal.omega0) ωZ A U T) (φ ψ : Fm)
+    (a : ZFSet.{u}) (ha : IsSeqA ωZ A a)
+    (hcov : ∀ k ∈ Fm.fv φ ∪ Fm.fv ψ, InDomZ a (natZ k)) :
+    ZFSet.pair (Fm.and φ ψ).code a ∈ T ↔
+      (ZFSet.pair φ.code a ∈ T ∧ ZFSet.pair ψ.code a ∈ T) := by
+  have hcφ : ∀ k ∈ Fm.fv φ, InDomZ a (natZ k) := fun k hk =>
+    hcov k (Finset.mem_union.mpr (Or.inl hk))
+  have hcψ : ∀ k ∈ Fm.fv ψ, InDomZ a (natZ k) := fun k hk =>
+    hcov k (Finset.mem_union.mpr (Or.inr hk))
+  rw [satCode_correct hc (Fm.and φ ψ) a ha (by simpa using hcov),
+    satCode_correct hc φ a ha hcφ, satCode_correct hc ψ a ha hcψ]
+  exact sat_and
+
+/-- Definition 8.3, condition 5: `⟨⌜∃v_i φ⌝, a⟩ ∈ T ↔ ∃x ∈ A, ∃b ∈ U (Update(a, i, x, b) ∧
+`⟨⌜φ⌝, b⟩ ∈ T)`. -/
+theorem satCode_ex {A U T : ZFSet.{u}} (hc : SatCode (L Ordinal.omega0) ωZ A U T) (i : ℕ)
+    (φ : Fm) (a : ZFSet.{u}) (ha : IsSeqA ωZ A a)
+    (hcov : ∀ k ∈ (Fm.fv φ).erase i, InDomZ a (natZ k)) :
+    ZFSet.pair (Fm.ex i φ).code a ∈ T ↔
+      ∃ x ∈ A, ∃ b ∈ U, IsUpdSeq a (natZ i) x b ∧ ZFSet.pair φ.code b ∈ T := by
+  have key : ∀ x ∈ A, ∀ b, IsUpdSeq a (natZ i) x b →
+      (ZFSet.pair φ.code b ∈ T ↔ SatIn A (Function.update (SeqVal a) i x) φ) ∧ b ∈ U := by
+    intro x hx b hb
+    obtain ⟨b', hb', hbseq, hbdom, hbval⟩ := exists_updSeq ha i hx
+    have hbU : b' ∈ U := seq_mem_of_puCl hc.trans hc.A_mem hc.w_mem hc.pucl hbseq
+    have hbcov : ∀ k ∈ Fm.fv φ, InDomZ b' (natZ k) := by
+      intro k hk
+      by_cases hki : k = i
+      · exact hbdom k (Or.inr hki)
+      · exact hbdom k (Or.inl (hcov k (Finset.mem_erase.mpr ⟨hki, hk⟩)))
+    have hagree : ∀ k ∈ Fm.fv φ, SeqVal b' k = Function.update (SeqVal a) i x k := by
+      intro k hk
+      by_cases hki : k = i
+      · exact hbval k (Or.inr hki)
+      · exact hbval k (Or.inl (hcov k (Finset.mem_erase.mpr ⟨hki, hk⟩)))
+    rw [isUpdSeq_unique hb hb']
+    exact ⟨(satCode_correct hc φ b' hbseq hbcov).trans (sat_congr hagree), hbU⟩
+  rw [satCode_correct hc (Fm.ex i φ) a ha (by simpa using hcov)]
+  rw [show SatIn A (SeqVal a) (Fm.ex i φ) ↔
+      ∃ x, x ∈ A ∧ SatIn A (Function.update (SeqVal a) i x) φ from sat_ex]
+  constructor
+  · rintro ⟨x, hx, hs⟩
+    obtain ⟨b, hb, -, -, -⟩ := exists_updSeq ha i hx
+    obtain ⟨hiff, hbU⟩ := key x hx b hb
+    exact ⟨x, hx, b, hbU, hb, hiff.mpr hs⟩
+  · rintro ⟨x, hx, b, -, hb, hT⟩
+    exact ⟨x, hx, (key x hx b hb).1.mp hT⟩
+
 /-- Uniqueness of the truth part. -/
 theorem satCode_unique {A U U' T T' : ZFSet.{u}} (hc : SatCode (L Ordinal.omega0) ωZ A U T)
     (hc' : SatCode (L Ordinal.omega0) ωZ A U' T') : T = T' := by
   have key : ∀ {U U' T T' : ZFSet.{u}}, SatCode (L Ordinal.omega0) ωZ A U T →
       SatCode (L Ordinal.omega0) ωZ A U' T' → ∀ z ∈ T, z ∈ T' := by
     intro U U' T T' hc hc' z hz
-    obtain ⟨e, _, a, haU, rfl, hcode, hasn⟩ := hc.proper z hz
+    obtain ⟨e, _, a, -, rfl, hcode, hasn⟩ := hc.proper z hz
     obtain ⟨φ, rfl⟩ := (isCodeW_iff e).mp hcode
     obtain ⟨ha, hcov⟩ := isAsn_code_iff.mp hasn
-    have haU' : a ∈ U' := seq_mem_of_puCl hc'.trans hc'.A_mem hc'.w_mem hc'.pucl ha
-    rw [satCode_correct hc' φ a ha hcov haU']
-    exact (satCode_correct hc φ a ha hcov haU).mp hz
+    rw [satCode_correct hc' φ a ha hcov]
+    exact (satCode_correct hc φ a ha hcov).mp hz
   ext z
   exact ⟨key hc hc' z, key hc' hc z⟩
 
@@ -659,22 +731,10 @@ theorem forall_pair_notMem_iff_bounded (a i : ZFSet.{u}) :
   · intro H y hy
     exact H _ hy _ (upair_mem_pair i y) y (mem_upair_right i y) rfl
 
-/-- `pair i x ∈ a ∨ ((∀ y, pair i y ∉ a) ∧ x = ∅)`. -/
+/-- `ValAt a i x`, i.e. `pair i x ∈ a`, is Δ0. -/
 theorem delta0_valAt (a i x : ℕ) (hai : a ≠ i) (hax : a ≠ x) (hix : i ≠ x) :
-    Delta0Def {a, i, x} (fun _ v => ValAt (v a) (v i) (v x)) := by
-  set m := a + i + x + 1 with hm
-  have n1 := (delta0_isKPair m i (m + 2) (by omega) (by omega)).not
-  have n2 := n1.ball (m + 2) (m + 1) (by omega)
-  have n3 := n2.ball (m + 1) m (by omega)
-  have hne := n3.ball m a (by omega)
-  have h := (delta0_funVal a i x hai hax hix).or (hne.and (delta0_isEmpty x))
-  refine (h.congr ?_).of_eq ?_
-  · intro D v _ _
-    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
-    unfold ValAt
-    rw [forall_pair_notMem_iff_bounded]
-  · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
-      Finset.mem_union]; omega
+    Delta0Def {a, i, x} (fun _ v => ValAt (v a) (v i) (v x)) :=
+  delta0_funVal a i x hai hax hix
 
 /-- `InDomZ a i` is Δ0. -/
 theorem delta0_inDomZ (a i : ℕ) (hai : a ≠ i) :
@@ -717,22 +777,6 @@ theorem exists_pairEmpty_iff_bounded (p : ZFSet.{u}) :
   · rintro ⟨q, -, k, -, h⟩
     exact ⟨k, h⟩
 
-theorem delta0_isPadOf (a b : ℕ) (hab : a ≠ b) :
-    Delta0Def {a, b} (fun _ v => IsPadOf (v a) (v b)) := by
-  set m := a + b + 1 with hm
-  have h1 := delta0_subset a b hab
-  have i1 := (delta0_eqPairEmpty m (m + 2) (by omega)).bex (m + 2) (m + 1) (by omega)
-  have i2 := i1.bex (m + 1) m (by omega)
-  have h2 := ((Delta0Def.mem m a).or i2).ball m b (by omega)
-  refine ((h1.and h2).congr ?_).of_eq ?_
-  · intro D v _ _
-    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
-    unfold IsPadOf
-    refine and_congr Iff.rfl (forall_congr' fun p => imp_congr_right fun _ => ?_)
-    exact or_congr Iff.rfl (exists_pairEmpty_iff_bounded p).symm
-  · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
-      Finset.mem_union]; omega
-
 theorem delta0_isSeqA (w A a : ℕ) (hwA : w ≠ A) (hwa : w ≠ a) (hAa : A ≠ a) :
     Delta0Def {w, A, a} (fun _ v => IsSeqA (v w) (v A) (v a)) := by
   set m := w + A + a + 1 with hm
@@ -763,7 +807,8 @@ theorem delta0_isAsn (h w A e a : ℕ) (hhw : h ≠ w) (hhe : h ≠ e) (hwA : w 
   have c1 := delta0_isSeqA w A a hwA hwa hAa
   have c2 := ((delta0_notFreeW h w m e (by omega) (by omega) hhe (by omega) hwe
     (by omega)).not.imp (delta0_inDomZ a m (by omega))).ball m w (by omega)
-  refine ((c1.and c2).congr ?_).mono ?_
+  have c3 := delta0_isCodeW h w e hhw hhe hwe
+  refine ((c1.and (c2.and c3)).congr ?_).mono ?_
   · intro D v _ _
     simp (disch := omega) only [Function.update_self, Function.update_of_ne]
     exact Iff.rfl
@@ -1146,10 +1191,11 @@ theorem satCode_truthSet_of {A U : ZFSet.{u}} (hUtrans : U.IsTransitive)
     simp only [SatIn, sat_eq]
     constructor
     · rintro ⟨-, -, h⟩
-      exact ⟨_, seqVal_mem_of_inDom ha hdi, (valAt_iff ha.1).mpr rfl,
-        _, seqVal_mem_of_inDom ha hdj, (valAt_iff ha.1).mpr rfl, h⟩
+      exact ⟨_, seqVal_mem_of_inDom ha hdi, (valAt_iff ha.1 hdi).mpr rfl,
+        _, seqVal_mem_of_inDom ha hdj, (valAt_iff ha.1 hdj).mpr rfl, h⟩
     · rintro ⟨x, _, hx, y, _, hy, rfl⟩
-      rw [valAt_iff ha.1] at hx hy
+      rw [valAt_iff ha.1 hdi] at hx
+      rw [valAt_iff ha.1 hdj] at hy
       exact ⟨ha, hcov, by rw [← hx, ← hy]⟩
   · intro i hi j hj a _ ha hdi hdj
     obtain ⟨i₀, rfl⟩ := mem_ωZ_iff.mp hi
@@ -1165,10 +1211,11 @@ theorem satCode_truthSet_of {A U : ZFSet.{u}} (hUtrans : U.IsTransitive)
     simp only [SatIn, sat_mem]
     constructor
     · rintro ⟨-, -, h⟩
-      exact ⟨_, seqVal_mem_of_inDom ha hdi, (valAt_iff ha.1).mpr rfl,
-        _, seqVal_mem_of_inDom ha hdj, (valAt_iff ha.1).mpr rfl, h⟩
+      exact ⟨_, seqVal_mem_of_inDom ha hdi, (valAt_iff ha.1 hdi).mpr rfl,
+        _, seqVal_mem_of_inDom ha hdj, (valAt_iff ha.1 hdj).mpr rfl, h⟩
     · rintro ⟨x, _, hx, y, _, hy, hxy⟩
-      rw [valAt_iff ha.1] at hx hy
+      rw [valAt_iff ha.1 hdi] at hx
+      rw [valAt_iff ha.1 hdj] at hy
       exact ⟨ha, hcov, by rw [← hx, ← hy]; exact hxy⟩
   · intro e₁ _ e₂ _ h₁ h₂ a _ hA1 hA2
     obtain ⟨φ, rfl⟩ := (isCodeW_iff e₁).mp h₁

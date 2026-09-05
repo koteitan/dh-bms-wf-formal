@@ -1,6 +1,8 @@
 /-
-  Part III: codes of block formulas, Δ₀ recognizers for codes of Δ₀ formulas and of
-  Σ̂q / Π̂q block formulas, and the Δ₀ projections (block variable sequence, body).
+  Part III: codes of block formulas, Δ₀ recognizers for codes of Δ₀ formulas and of Δ₀ block
+  formulas, and the Δ₀ projections (block variable sequence, body).  The recognizers for the
+  codes of Σ̂q / Π̂q block formulas live in `Bm4.SetTheory.BFCodeD`, where — as Definition 12.1
+  requires — every quantifier block is asked to consist of pairwise distinct variables.
 -/
 import Bm4.SetTheory.Code
 import Bm4.SetTheory.BF
@@ -452,7 +454,7 @@ theorem isDelta0CodeW_iff (e : ZFSet.{u}) :
     exact ⟨seqOfAux 0 l, seqOfAux_mem_Lω 0 l hmem, delta0DerSeqW_seqOfAux hg,
       natZ (l.length - 1), mem_seqOfAux.mpr ⟨l.length - 1, Fm.code.{u} φ, hlast, by simp⟩⟩
 
-/-! ### Nonempty finite sequences of variables -/
+/-! ### Membership in `seqOfNats` -/
 
 theorem getElem?_map_natZ' {l : List ℕ} {n : ℕ} {x : ZFSet.{u}}
     (h : (l.map natZ.{u})[n]? = some x) : ∃ i, l[n]? = some i ∧ x = natZ.{u} i := by
@@ -476,134 +478,12 @@ theorem getElem?_map_range {α : Type*} (f : ℕ → α) {N mm : ℕ} (h : mm < 
   rw [List.getElem?_map, List.getElem?_eq_getElem (by simpa using h)]
   simp
 
-/-- `ν` is a nonempty finite sequence of elements of `w`. -/
-def IsNeSeqW (w ν : ZFSet.{u}) : Prop :=
-  IsFunc ν ∧ (∃ d ∈ w, IsDom ν d ∧ d ≠ ∅) ∧ ∀ k x, ZFSet.pair k x ∈ ν → x ∈ w
-
-theorem delta0_isNeSeqW (w n : ℕ) (hwn : w ≠ n) :
-    Delta0Def {w, n} (fun _ v => IsNeSeqW (v w) (v n)) := by
-  set m := w + n + 1 with hm
-  have h1 := delta0_isFunc n
-  have h2 := ((delta0_isDom n m (by omega)).and (delta0_isEmpty m).not).bex m w (by omega)
-  have c0 := (delta0_isKPair (m + 1) (m + 3) (m + 5) (by omega) (by omega)).imp
-    (Delta0Def.mem (m + 5) w)
-  have c1 := c0.ball (m + 5) (m + 4) (by omega)
-  have c2 := c1.ball (m + 4) (m + 1) (by omega)
-  have c3 := c2.ball (m + 3) (m + 2) (by omega)
-  have c4 := c3.ball (m + 2) (m + 1) (by omega)
-  have h3 := c4.ball (m + 1) n (by omega)
-  refine ((h1.and (h2.and h3)).congr ?_).of_eq ?_
-  · intro D v _ _
-    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
-    unfold IsNeSeqW
-    refine and_congr Iff.rfl (and_congr Iff.rfl ?_)
-    rw [forall_pair_mem_iff_bounded]
-  · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
-      Finset.mem_union]; omega
-
-/-- The natural-number value of the sequence `ν` at index `m` (arbitrary if undefined). -/
-noncomputable def seqNatVal (ν : ZFSet.{u}) (m : ℕ) : ℕ :=
-  Classical.epsilon (fun k : ℕ => ZFSet.pair (natZ.{u} m) (natZ.{u} k) ∈ ν)
-
-theorem seqNatVal_mem {ν : ZFSet.{u}} {m : ℕ}
-    (h : ∃ k : ℕ, ZFSet.pair (natZ.{u} m) (natZ.{u} k) ∈ ν) :
-    ZFSet.pair (natZ.{u} m) (natZ.{u} (seqNatVal ν m)) ∈ ν :=
-  Classical.epsilon_spec h
-
-theorem seqNatVal_spec {ν : ZFSet.{u}} (hf : IsFunc ν) {m k : ℕ}
-    (hk : ZFSet.pair (natZ.{u} m) (natZ.{u} k) ∈ ν) : seqNatVal ν m = k :=
-  natZ_injective (hf.2 _ _ _ (seqNatVal_mem ⟨k, hk⟩) hk)
-
-theorem isNeSeqW_iff (ν : ZFSet.{u}) :
-    IsNeSeqW ωZ ν ↔ ∃ l : List ℕ, l ≠ [] ∧ ν = seqOfNats.{u} l := by
-  constructor
-  · rintro ⟨hf, ⟨d, hd, hdom, hne⟩, hval⟩
-    obtain ⟨N, rfl⟩ := mem_ωZ_iff.mp hd
-    have hN : N ≠ 0 := by rintro rfl; exact hne rfl
-    refine ⟨(List.range N).map (seqNatVal ν), ?_, ?_⟩
-    · intro hnil
-      have hz : ((List.range N).map (seqNatVal ν)).length = 0 := by rw [hnil]; rfl
-      simp only [List.length_map, List.length_range] at hz
-      exact hN hz
-    · ext p
-      constructor
-      · intro hp
-        obtain ⟨a, b, rfl⟩ := hf.1 p hp
-        have ha : a ∈ natZ N := (hdom a).mpr ⟨b, hp⟩
-        obtain ⟨mm, hmm, rfl⟩ := mem_natZ_iff.mp ha
-        obtain ⟨kk, rfl⟩ := mem_ωZ_iff.mp (hval _ _ hp)
-        have hv : seqNatVal ν mm = kk := seqNatVal_spec hf hp
-        rw [← hv]
-        exact mem_seqOfNats.mpr (getElem?_map_range (seqNatVal ν) hmm)
-      · intro hp
-        obtain ⟨mm, i, hli, rfl⟩ := mem_seqOfNats_iff.mp hp
-        have hmm : mm < N := by
-          have hh := (List.getElem?_eq_some_iff.mp hli).1
-          simpa using hh
-        have hi : i = seqNatVal ν mm := by
-          rw [getElem?_map_range (seqNatVal ν) hmm] at hli
-          exact (Option.some.inj hli).symm
-        subst hi
-        have hex : ∃ k : ℕ, ZFSet.pair (natZ.{u} mm) (natZ.{u} k) ∈ ν := by
-          obtain ⟨b, hb⟩ := (hdom (natZ mm)).mp (mem_natZ_iff.mpr ⟨mm, hmm, rfl⟩)
-          obtain ⟨k, rfl⟩ := mem_ωZ_iff.mp (hval _ _ hb)
-          exact ⟨k, hb⟩
-        exact seqNatVal_mem hex
-  · rintro ⟨l, hl, rfl⟩
-    have hlen : 0 < l.length := by
-      cases l with
-      | nil => exact absurd rfl hl
-      | cons a t => simp
-    refine ⟨⟨?_, ?_⟩, ⟨natZ l.length, natZ_mem_ωZ _, ?_, ?_⟩, ?_⟩
-    · intro p hp
-      obtain ⟨n, i, _, rfl⟩ := mem_seqOfNats_iff.mp hp
-      exact ⟨_, _, rfl⟩
-    · intro a b b' hab hab'
-      obtain ⟨n, i, hni, hp⟩ := mem_seqOfNats_iff.mp hab
-      obtain ⟨n', i', hni', hp'⟩ := mem_seqOfNats_iff.mp hab'
-      rw [ZFSet.pair_inj] at hp hp'
-      obtain ⟨rfl, rfl⟩ := hp
-      obtain ⟨ha, rfl⟩ := hp'
-      have hnn : n = n' := natZ_injective ha
-      subst hnn
-      rw [hni] at hni'
-      rw [Option.some.inj hni']
-    · intro a
-      rw [mem_natZ_iff]
-      constructor
-      · rintro ⟨mm, hmm, rfl⟩
-        exact ⟨natZ l[mm], mem_seqOfNats.mpr (List.getElem?_eq_getElem hmm)⟩
-      · rintro ⟨b, hb⟩
-        obtain ⟨n, i, hni, hp⟩ := mem_seqOfNats_iff.mp hb
-        rw [ZFSet.pair_inj] at hp
-        exact ⟨n, (List.getElem?_eq_some_iff.mp hni).1, hp.1⟩
-    · intro hE
-      have hmem : natZ.{u} 0 ∈ natZ.{u} l.length := natZ_mem_natZ_iff.mpr hlen
-      rw [hE] at hmem
-      exact ZFSet.notMem_empty _ hmem
-    · intro k x hkx
-      obtain ⟨n, i, _, hp⟩ := mem_seqOfNats_iff.mp hkx
-      rw [ZFSet.pair_inj] at hp
-      rw [hp.2]
-      exact natZ_mem_ωZ i
-
-/-! ### Recognizers for codes of Σ̂q / Π̂q block formulas -/
+/-! ### Recognizer for codes of Δ₀ block formulas -/
 
 /-- `e` codes a signed Δ₀ block formula `delta sg φ`. -/
 def IsDeltaBFCodeW (h w e : ZFSet.{u}) : Prop :=
   ∃ sg d, e = ZFSet.pair (natZ 0) (ZFSet.pair sg d) ∧ (sg = natZ 0 ∨ sg = natZ 1) ∧
     IsDelta0CodeW h w d
-
-mutual
-/-- Recognizer, by recursion on `q`, of codes of Σ̂q block formulas. -/
-def IsSigCodeW (h w : ZFSet.{u}) : ℕ → ZFSet.{u} → Prop
-  | 0, e => IsDeltaBFCodeW h w e
-  | q + 1, e => ∃ ν d, e = ZFSet.pair (natZ 1) (ZFSet.pair ν d) ∧ IsNeSeqW w ν ∧ IsPiCodeW h w q d
-/-- Recognizer, by recursion on `q`, of codes of Π̂q block formulas. -/
-def IsPiCodeW (h w : ZFSet.{u}) : ℕ → ZFSet.{u} → Prop
-  | 0, e => IsDeltaBFCodeW h w e
-  | q + 1, e => ∃ ν d, e = ZFSet.pair (natZ 2) (ZFSet.pair ν d) ∧ IsNeSeqW w ν ∧ IsSigCodeW h w q d
-end
 
 /-- Δ₀-definability of `∃ a d, e = ⟨natZ t, ⟨a, d⟩⟩ ∧ Q w a ∧ P h w d`. -/
 theorem delta0_pairShape (t : ℕ) (h w e : ℕ) (hhw : h ≠ w) (hhe : h ≠ e) (hwe : w ≠ e)
@@ -648,38 +528,7 @@ theorem delta0_isDeltaBFCodeW (h w e : ℕ) (hhw : h ≠ w) (hhe : h ≠ e) (hwe
     tauto
   · rfl
 
-theorem delta0_isSigPiCodeW : ∀ (q : ℕ) (h w e : ℕ), h ≠ w → h ≠ e → w ≠ e →
-    Delta0Def.{u} {h, w, e} (fun _ v => IsSigCodeW (v h) (v w) q (v e)) ∧
-    Delta0Def.{u} {h, w, e} (fun _ v => IsPiCodeW (v h) (v w) q (v e)) := by
-  intro q
-  induction q with
-  | zero =>
-    intro h w e hhw hhe hwe
-    exact ⟨(delta0_isDeltaBFCodeW h w e hhw hhe hwe).congr (fun _ _ _ _ => Iff.rfl),
-      (delta0_isDeltaBFCodeW h w e hhw hhe hwe).congr (fun _ _ _ _ => Iff.rfl)⟩
-  | succ q ih =>
-    intro h w e hhw hhe hwe
-    constructor
-    · refine (delta0_pairShape (Q := fun W ν => IsNeSeqW W ν)
-        (P := fun H W d => IsPiCodeW H W q d) 1 h w e hhw hhe hwe
-        (fun a _ hwa _ => delta0_isNeSeqW w a hwa)
-        (fun d hhd hwd _ => (ih h w d hhw hhd hwd).2)).congr (fun _ _ _ _ => ?_)
-      rfl
-    · refine (delta0_pairShape (Q := fun W ν => IsNeSeqW W ν)
-        (P := fun H W d => IsSigCodeW H W q d) 2 h w e hhw hhe hwe
-        (fun a _ hwa _ => delta0_isNeSeqW w a hwa)
-        (fun d hhd hwd _ => (ih h w d hhw hhd hwd).1)).congr (fun _ _ _ _ => ?_)
-      rfl
-
-theorem delta0_isSigCodeW (q : ℕ) (h w e : ℕ) (hhw : h ≠ w) (hhe : h ≠ e) (hwe : w ≠ e) :
-    Delta0Def.{u} {h, w, e} (fun _ v => IsSigCodeW (v h) (v w) q (v e)) :=
-  (delta0_isSigPiCodeW q h w e hhw hhe hwe).1
-
-theorem delta0_isPiCodeW (q : ℕ) (h w e : ℕ) (hhw : h ≠ w) (hhe : h ≠ e) (hwe : w ≠ e) :
-    Delta0Def.{u} {h, w, e} (fun _ v => IsPiCodeW (v h) (v w) q (v e)) :=
-  (delta0_isSigPiCodeW q h w e hhw hhe hwe).2
-
-/-! ### Correctness of the block-code recognizers -/
+/-! ### Correctness of the Δ₀ block-code recognizer -/
 
 theorem isDeltaBFCodeW_iff (e : ZFSet.{u}) :
     IsDeltaBFCodeW (L Ordinal.omega0) ωZ e ↔
@@ -695,99 +544,29 @@ theorem isDeltaBFCodeW_iff (e : ZFSet.{u}) :
       (isDelta0CodeW_iff _).mpr ⟨φ, hφ, rfl⟩⟩
     cases sg <;> simp
 
-theorem isSigPiCodeW_iff : ∀ (q : ℕ) (e : ZFSet.{u}),
-    (IsSigCodeW (L Ordinal.omega0) ωZ q e ↔ ∃ b : BF, BF.Sig q b ∧ e = BF.code.{u} b) ∧
-    (IsPiCodeW (L Ordinal.omega0) ωZ q e ↔ ∃ b : BF, BF.Pi q b ∧ e = BF.code.{u} b) := by
-  intro q
-  induction q with
-  | zero =>
-    intro e
-    constructor
-    · refine (isDeltaBFCodeW_iff e).trans ?_
-      constructor
-      · rintro ⟨sg, φ, hφ, rfl⟩; exact ⟨BF.delta sg φ, BF.Sig.zero hφ, rfl⟩
-      · rintro ⟨b, hb, rfl⟩
-        cases hb with
-        | @zero sg φ hφ => exact ⟨sg, φ, hφ, rfl⟩
-    · refine (isDeltaBFCodeW_iff e).trans ?_
-      constructor
-      · rintro ⟨sg, φ, hφ, rfl⟩; exact ⟨BF.delta sg φ, BF.Pi.zero hφ, rfl⟩
-      · rintro ⟨b, hb, rfl⟩
-        cases hb with
-        | @zero sg φ hφ => exact ⟨sg, φ, hφ, rfl⟩
-  | succ q ih =>
-    intro e
-    constructor
-    · show (∃ ν d, e = ZFSet.pair (natZ 1) (ZFSet.pair ν d) ∧ IsNeSeqW ωZ ν ∧
-        IsPiCodeW (L Ordinal.omega0) ωZ q d) ↔ _
-      constructor
-      · rintro ⟨ν, d, H, hν, hd⟩
-        obtain ⟨l, hl, rfl⟩ := (isNeSeqW_iff ν).mp hν
-        obtain ⟨b, hb, rfl⟩ := (ih d).2.mp hd
-        exact ⟨BF.exs l b, BF.Sig.succ hl hb, H⟩
-      · rintro ⟨b, hb, rfl⟩
-        cases hb with
-        | @succ q' l hl ψ hψ =>
-          exact ⟨seqOfNats.{u} l, BF.code.{u} ψ, rfl, (isNeSeqW_iff _).mpr ⟨l, hl, rfl⟩,
-            (ih _).2.mpr ⟨ψ, hψ, rfl⟩⟩
-    · show (∃ ν d, e = ZFSet.pair (natZ 2) (ZFSet.pair ν d) ∧ IsNeSeqW ωZ ν ∧
-        IsSigCodeW (L Ordinal.omega0) ωZ q d) ↔ _
-      constructor
-      · rintro ⟨ν, d, H, hν, hd⟩
-        obtain ⟨l, hl, rfl⟩ := (isNeSeqW_iff ν).mp hν
-        obtain ⟨b, hb, rfl⟩ := (ih d).1.mp hd
-        exact ⟨BF.alls l b, BF.Pi.succ hl hb, H⟩
-      · rintro ⟨b, hb, rfl⟩
-        cases hb with
-        | @succ q' l hl ψ hψ =>
-          exact ⟨seqOfNats.{u} l, BF.code.{u} ψ, rfl, (isNeSeqW_iff _).mpr ⟨l, hl, rfl⟩,
-            (ih _).1.mpr ⟨ψ, hψ, rfl⟩⟩
-
-theorem isSigCodeW_iff (q : ℕ) (e : ZFSet.{u}) :
-    IsSigCodeW (L Ordinal.omega0) ωZ q e ↔ ∃ b : BF, BF.Sig q b ∧ e = BF.code.{u} b :=
-  (isSigPiCodeW_iff q e).1
-
-theorem isPiCodeW_iff (q : ℕ) (e : ZFSet.{u}) :
-    IsPiCodeW (L Ordinal.omega0) ωZ q e ↔ ∃ b : BF, BF.Pi q b ∧ e = BF.code.{u} b :=
-  (isSigPiCodeW_iff q e).2
-
 /-! ### Projections of a block code -/
 
-/-- Projections of a block code `⟨t, ⟨ν, d⟩⟩`. -/
-def IsVarsBody (e ν d : ZFSet.{u}) : Prop := ∃ t, e = ZFSet.pair t (ZFSet.pair ν d)
+/-- Projections of a block code `⟨t, ⟨ν, d⟩⟩` whose tag `t` is `natZ 1` (`∃`) or `natZ 2` (`∀`):
+`ν` is `Vars(e)` and `d` is `Body(e)` in the sense of Definition 12.1, which speaks of an
+alternating block formula.  A `Δ₀` block code `⟨natZ 0, ⟨sg, d⟩⟩` carries no block of
+variables and is excluded by the tag test. -/
+def IsVarsBody (e ν d : ZFSet.{u}) : Prop :=
+  e = ZFSet.pair (natZ 1) (ZFSet.pair ν d) ∨ e = ZFSet.pair (natZ 2) (ZFSet.pair ν d)
 
 theorem delta0_isVarsBody (e ν d : ℕ) (hev : e ≠ ν) (hed : e ≠ d) (hvd : ν ≠ d) :
-    Delta0Def.{u} {e, ν, d} (fun _ v => IsVarsBody (v e) (v ν) (v d)) := by
-  set m := e + ν + d + 1 with hm
-  have b0 := (delta0_isKPair (m + 4) ν d (by omega) (by omega)).and
-    (delta0_isKPair e (m + 2) (m + 4) (by omega) (by omega))
-  have b1 := b0.bex (m + 4) (m + 3) (by omega)
-  have b2 := b1.bex (m + 3) e (by omega)
-  have b3 := b2.bex (m + 2) (m + 1) (by omega)
-  have b4 := b3.bex (m + 1) e (by omega)
-  refine (b4.congr ?_).of_eq ?_
-  · intro D v _ _
-    simp (disch := omega) only [Function.update_self, Function.update_of_ne]
-    constructor
-    · rintro ⟨q, _, t, _, q', _, X, _, rfl, H⟩
-      exact ⟨t, H⟩
-    · rintro ⟨t, H⟩
-      exact ⟨_, by rw [H]; exact singleton_mem_pair _ _, t, ZFSet.mem_singleton.mpr rfl,
-        _, by rw [H]; exact upair_mem_pair _ _, _, mem_upair_right _ _, rfl, H⟩
-  · ext k; simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton,
-      Finset.mem_union]; omega
+    Delta0Def.{u} {e, ν, d} (fun _ v => IsVarsBody (v e) (v ν) (v d)) :=
+  ((delta0_tagPair 1 e ν d hev hed).or (delta0_tagPair 2 e ν d hev hed)).of_eq
+    (Finset.union_self _)
 
 theorem isVarsBody_code_exs (l : List ℕ) (ψ : BF) :
-    IsVarsBody (BF.code.{u} (BF.exs l ψ)) (seqOfNats.{u} l) (BF.code.{u} ψ) := ⟨natZ 1, rfl⟩
+    IsVarsBody (BF.code.{u} (BF.exs l ψ)) (seqOfNats.{u} l) (BF.code.{u} ψ) := Or.inl rfl
 
 theorem isVarsBody_code_alls (l : List ℕ) (ψ : BF) :
-    IsVarsBody (BF.code.{u} (BF.alls l ψ)) (seqOfNats.{u} l) (BF.code.{u} ψ) := ⟨natZ 2, rfl⟩
+    IsVarsBody (BF.code.{u} (BF.alls l ψ)) (seqOfNats.{u} l) (BF.code.{u} ψ) := Or.inr rfl
 
 theorem isVarsBody_unique {e ν d ν' d' : ZFSet.{u}} (h : IsVarsBody e ν d)
     (h' : IsVarsBody e ν' d') : ν = ν' ∧ d = d' := by
-  obtain ⟨t, H⟩ := h
-  obtain ⟨t', H'⟩ := h'
-  rw [H, ZFSet.pair_inj, ZFSet.pair_inj] at H'
-  exact ⟨H'.2.1, H'.2.2⟩
+  rcases h with H | H <;> rcases h' with H' | H' <;>
+    (rw [H, ZFSet.pair_inj, ZFSet.pair_inj] at H'; exact ⟨H'.2.1, H'.2.2⟩)
 
 end BM4.ST

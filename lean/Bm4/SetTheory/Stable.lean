@@ -33,7 +33,7 @@ theorem relAdm_lt {k : ℕ} {α β : AdmOrd.{u}} (h : RelAdm k α β) : α < β 
 /-- Lemma 15.1 (1). -/
 theorem relAdm_mono {h k : ℕ} {α β : AdmOrd.{u}} (hhk : h ≤ k) (hr : RelAdm k α β) :
     RelAdm h α β :=
-  ⟨hr.1, hr.2.mono (by omega)⟩
+  ⟨hr.1, hr.2.mono (by omega) (by omega)⟩
 
 /-- Lemma 15.1 (2). -/
 theorem relAdm_trans {k : ℕ} {α β γ : AdmOrd.{u}} (h₁ : RelAdm k α β) (h₂ : RelAdm k β γ) :
@@ -43,7 +43,7 @@ theorem relAdm_trans {k : ℕ} {α β γ : AdmOrd.{u}} (h₁ : RelAdm k α β) (
 /-- Full elementarity gives `◁ₖ` for every `k`. -/
 theorem relAdm_of_elemFull {α β : AdmOrd.{u}} (hlt : α < β) (h : ElemFull (L α.1) (L β.1))
     (k : ℕ) : RelAdm k α β :=
-  ⟨hlt, h.elemHat (k + 2)⟩
+  ⟨hlt, h.elemHat (L_transitive α.1) (L_transitive β.1) (by omega)⟩
 
 /-- **The initial pair** (Lemma 16.2): admissible `Λ < Θ` with `Λ ◁ₖ Θ` for every `k`. -/
 theorem exists_relAdm_all : ∃ Λ Θ : AdmOrd.{u}, ∀ k, RelAdm k Λ Θ := by

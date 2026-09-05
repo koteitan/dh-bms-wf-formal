@@ -74,7 +74,7 @@ theorem col_le_of_le_of_cand {q i j k : ℕ} (hi : i < b.s) (hj : j < b.s)
 /-- Structural candidates inside a copy: for row `0` both sides say `i < j`, and for row
 `k + 1` both sides are `k`-ancestry, which is the previous claim. -/
 theorem cand_copy_iff (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) {q i j : ℕ}
-    (hi : i < b.s) (hj : j < b.s) :
+    (hq : q ≤ b.N) (hi : i < b.s) (hj : j < b.s) :
     cand b.tA k (b.pos q i) (b.pos q j) ↔ cand A k (b.p + i) (b.p + j) := by
   cases k with
   | zero =>
@@ -82,19 +82,19 @@ theorem cand_copy_iff (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) {q i j : ℕ}
     omega
   | succ k =>
     have hc : b.Claim1 k := ih k (Nat.lt_succ_self k)
-    exact hc q i j hi hj
+    exact hc q hq i j hi hj
 
 /-- Direct parents inside one copy correspond index-wise to direct parents inside the bad
 part of `A`. -/
 theorem parent_copy_iff (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) {q i j : ℕ}
-    (hi : i < b.s) (hj : j < b.s) :
+    (hq : q ≤ b.N) (hi : i < b.s) (hj : j < b.s) :
     parent b.tA k (b.pos q i) (b.pos q j) ↔ parent A k (b.p + i) (b.p + j) := by
   constructor
   · -- (⇒)
     intro hp
     have hij : i < j := b.pos_lt_pos_same_iff.mp (parent_lt hp)
     have hcand : cand A k (b.p + i) (b.p + j) :=
-      (b.cand_copy_iff k ih hi hj).mp (parent_cand hp)
+      (b.cand_copy_iff k ih hq hi hj).mp (parent_cand hp)
     have h3 := parent_val_lt hp
     have hval : A.col (b.p + i) k < A.col (b.p + j) k := by
       by_cases hasc : b.Asc k j
@@ -103,20 +103,23 @@ theorem parent_copy_iff (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) {q i j : �
         exact addLtRight.mp h3
       · rw [b.col_pos_not_asc hj hasc] at h3
         exact lt_of_le_of_lt (b.le_col_pos hi) h3
-    refine ⟨by omega, hcand, hval, ?_⟩
+    refine ⟨by omega, hcand, hval, ?_, parent_row_lt hp,
+      by have := b.lt_c_of_lt_s hj; omega⟩
     intro y hy1 hy2 hcy
     by_contra hcon
     -- an internal valid candidate would produce a direct parent inside the copy
     have hcon' : A.col y k < A.col (b.p + j) k := not_le.mp hcon
     obtain ⟨z, hz, hzge⟩ :=
-      exists_parent_of_intECand (A := A) (lo := y) (k := k) (j := y) (i := b.p + j)
-        ⟨le_rfl, hcy, hcon'⟩
+      exists_parent_of_intECand (A := A) (lo := y) (hi := b.p + j + 1) (k := k) (j := y)
+        (i := b.p + j)
+        ⟨le_rfl, Nat.lt_succ_of_lt (cand_lt hcy), hcy, hcon', parent_row_lt hp,
+          by have := b.lt_c_of_lt_s hj; omega⟩
     have hz1 : z < b.p + j := parent_lt hz
     have hz2 : b.p + i < z := lt_of_lt_of_le hy1 hzge
     obtain ⟨i2, rfl⟩ : ∃ i2, z = b.p + i2 := ⟨z - b.p, by omega⟩
     have hi2s : i2 < b.s := by omega
     have hcz : cand b.tA k (b.pos q i2) (b.pos q j) :=
-      (b.cand_copy_iff k ih hi2s hj).mpr (parent_cand hz)
+      (b.cand_copy_iff k ih hq hi2s hj).mpr (parent_cand hz)
     have hlt : b.tA.col (b.pos q i2) k < b.tA.col (b.pos q j) k :=
       (b.col_lt_iff_of_anc hi2s hj (anc_of_parent hz)).mpr (parent_val_lt hz)
     have hmax := parent_max hp (b.pos_lt_pos_same (i := i) (j := i2) (by omega))
@@ -126,14 +129,15 @@ theorem parent_copy_iff (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) {q i j : �
     intro hp
     have hij : i < j := by have := parent_lt hp; omega
     have hcand : cand b.tA k (b.pos q i) (b.pos q j) :=
-      (b.cand_copy_iff k ih hi hj).mpr (parent_cand hp)
+      (b.cand_copy_iff k ih hq hi hj).mpr (parent_cand hp)
     have hval : b.tA.col (b.pos q i) k < b.tA.col (b.pos q j) k :=
       (b.col_lt_iff_of_anc hi hj (anc_of_parent hp)).mpr (parent_val_lt hp)
-    refine ⟨b.pos_lt_pos_same hij, hcand, hval, ?_⟩
+    refine ⟨b.pos_lt_pos_same hij, hcand, hval, ?_, parent_row_lt hp,
+      b.pos_lt_tA_len hq hj⟩
     intro y hy1 hy2 hcy
     obtain ⟨i2, rfl, hlt1, hlt2⟩ := b.between_same_copy hj hy1 hy2
     have hi2s : i2 < b.s := hlt2.trans hj
-    have hcA : cand A k (b.p + i2) (b.p + j) := (b.cand_copy_iff k ih hi2s hj).mp hcy
+    have hcA : cand A k (b.p + i2) (b.p + j) := (b.cand_copy_iff k ih hq hi2s hj).mp hcy
     exact b.col_le_of_le_of_cand hi2s hj hcA
       (parent_max hp (j' := b.p + i2) (by omega) (by omega) hcA)
 
@@ -141,7 +145,7 @@ theorem parent_copy_iff (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) {q i j : �
 
 /-- Ancestry inside one copy is iterated internal parenthood, hence corresponds index-wise to
 ancestry inside the bad part. -/
-theorem anc_copy_iff (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) (q : ℕ) :
+theorem anc_copy_iff (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) (q : ℕ) (hq : q ≤ b.N) :
     ∀ j, j < b.s → ∀ i, i < b.s →
       (anc b.tA k (b.pos q i) (b.pos q j) ↔ anc A k (b.p + i) (b.p + j)) := by
   intro j
@@ -152,28 +156,28 @@ theorem anc_copy_iff (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) (q : ℕ) :
   · intro h
     obtain ⟨u, hu, hup⟩ := anc_last_step h
     rcases hu with rfl | hu
-    · exact anc_of_parent ((b.parent_copy_iff k ih hi hj).mp hup)
+    · exact anc_of_parent ((b.parent_copy_iff k ih hq hi hj).mp hup)
     · obtain ⟨i2, rfl, hlt1, hlt2⟩ := b.between_same_copy hj (anc_lt hu) (parent_lt hup)
       have hi2s : i2 < b.s := hlt2.trans hj
       have h1 : anc A k (b.p + i) (b.p + i2) := (IH i2 hlt2 hi2s i hi).mp hu
-      exact anc_of_anc_of_parent h1 ((b.parent_copy_iff k ih hi2s hj).mp hup)
+      exact anc_of_anc_of_parent h1 ((b.parent_copy_iff k ih hq hi2s hj).mp hup)
   · intro h
     obtain ⟨u, hu, hup⟩ := anc_last_step h
     rcases hu with rfl | hu
-    · exact anc_of_parent ((b.parent_copy_iff k ih hi hj).mpr hup)
+    · exact anc_of_parent ((b.parent_copy_iff k ih hq hi hj).mpr hup)
     · have hlt1 : b.p + i < u := anc_lt hu
       have hlt2 : u < b.p + j := parent_lt hup
       obtain ⟨i2, rfl⟩ : ∃ i2, u = b.p + i2 := ⟨u - b.p, by omega⟩
       have hij2 : i2 < j := by omega
       have hi2s : i2 < b.s := hij2.trans hj
       have h1 : anc b.tA k (b.pos q i) (b.pos q i2) := (IH i2 hij2 hi2s i hi).mpr hu
-      exact anc_of_anc_of_parent h1 ((b.parent_copy_iff k ih hi2s hj).mpr hup)
+      exact anc_of_anc_of_parent h1 ((b.parent_copy_iff k ih hq hi2s hj).mpr hup)
 
 /-- **Lemma 6.4** (local proof I): the first claim of Theorem 6.3 for row `k` follows from the
 same claim for all rows `h < k`, using none of the other five claims. -/
 theorem lemma_6_4 (k : ℕ) (ih : ∀ h, h < k → b.Claim1 h) : b.Claim1 k := by
-  intro q i j hi hj
-  exact b.anc_copy_iff k ih q j hj i hi
+  intro q hq i j hi hj
+  exact b.anc_copy_iff k ih q hq j hj i hi
 
 end BadRoot
 

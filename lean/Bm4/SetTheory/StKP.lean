@@ -25,19 +25,6 @@ open Fm
 def StKP (D : ZFSet.{u} → Prop) (h w : ZFSet.{u}) (k : ℕ) (ξ : ZFSet.{u}) : Prop :=
   ∀ M, D M → ∀ c, D c → LCode h w ξ M c → TVqP D h w (k + 2) M
 
-/-- Definition 15.4, over the padding `TV_q`:
-
-    Rel_k(ξ, η) :⟺ Ord(ξ) ∧ Ord(η) ∧ ξ < η ∧ ∃M ∃c (LCode(η, M, c) ∧ St_k(ξ)^M).
-
-`StKP (· ∈ M) …` is the *semantic* reading of the paper's relativization `St_k(ξ)^M`.  As in
-Definition 14.2 the semantic and the syntactic reading agree exactly when `M` is a transitive
-nonempty set containing the parameters `h`, `w`, `ξ`, so the relativized stability is asserted
-under those hypotheses.  They hold for the only `M` a hierarchy code can name, namely `L η`. -/
-def RelKP (D : ZFSet.{u} → Prop) (h w : ZFSet.{u}) (k : ℕ) (ξ η : ZFSet.{u}) : Prop :=
-  ξ.IsOrdinal ∧ η.IsOrdinal ∧ ξ ∈ η ∧
-    ∃ M, D M ∧ ∃ c, D c ∧ LCode h w η M c ∧
-      (M.IsTransitive → (∃ z, z ∈ M) → h ∈ M → w ∈ M → ξ ∈ M → StKP (· ∈ M) h w k ξ)
-
 /-! ### Complexity -/
 
 theorem piDef_StKP (k : ℕ) (h w x : ℕ) (hhw : h ≠ w) (hhx : h ≠ x) (hwx : w ≠ x) :
@@ -62,49 +49,146 @@ theorem piDef_StKP (k : ℕ) (h w x : ℕ) (hhw : h ≠ w) (hhx : h ≠ x) (hwx 
     simp only [Finset.mem_insert, Finset.mem_erase, Finset.mem_singleton, Finset.mem_union]
     omega
 
+/-! ### The relativization `St_k(ξ)^M` (Definition 15.4)
+
+The paper reads `St_k(ξ)^M` as a *syntactic* operation: the fixed formula of Definition 15.2 with
+all its unbounded quantifiers restricted to `M`.  `stFm` names that fixed formula, in the variables
+`0 = h`, `1 = w`, `2 = ξ`, with `3` kept out of its bound variables so that `3` can name `M`;
+`stRelFm` is its relativization and `stVal` the valuation at which it is read.  No side condition
+is attached to the relativized formula — the conditions that make it agree with the semantic
+reading `StKP (· ∈ M)` live in `sat_stRelFm_iff` and are discharged from `M = L η`. -/
+
+/-- Definition 15.2 as a fixed formula in the variables `0 = h`, `1 = w`, `2 = ξ`, avoiding `3`
+as a bound variable. -/
+theorem exists_stFm (k : ℕ) :
+    ∃ φ : Fm, fv φ ⊆ {0, 1, 2} ∧ 3 ∉ vars φ ∧
+      ∀ (D : ZFSet.{u} → Prop) (v : ℕ → ZFSet.{u}), GoodDom D → ValD D {0, 1, 2} v →
+        (Sat D v φ ↔ StKP.{u} D (v 0) (v 1) k (v 2)) := by
+  obtain ⟨φ, -, hfv, hsat⟩ := piDef_StKP.{u} k 0 1 2 (by omega) (by omega) (by omega)
+  have h3 : (3 : ℕ) ∉ fv φ := by
+    intro hmem
+    have := hfv hmem
+    simp only [Finset.mem_insert, Finset.mem_singleton] at this
+    omega
+  obtain ⟨φ', hvars, hfv', hequiv, -, -⟩ := Fm.exists_avoid φ 3 h3
+  exact ⟨φ', by rw [hfv']; exact hfv, hvars, fun D v hD hv => (hequiv D v).trans (hsat D v hD hv)⟩
+
+/-- The fixed formula `St_k(ξ)` of Definition 15.2. -/
+noncomputable def stFm (k : ℕ) : Fm := (exists_stFm.{u} k).choose
+
+theorem fv_stFm (k : ℕ) : fv (stFm.{u} k) ⊆ {0, 1, 2} := (exists_stFm.{u} k).choose_spec.1
+
+theorem notMem_vars_stFm (k : ℕ) : 3 ∉ vars (stFm.{u} k) := (exists_stFm.{u} k).choose_spec.2.1
+
+theorem sat_stFm (k : ℕ) {D : ZFSet.{u} → Prop} {v : ℕ → ZFSet.{u}} (hD : GoodDom D)
+    (hv : ValD D {0, 1, 2} v) : Sat D v (stFm.{u} k) ↔ StKP.{u} D (v 0) (v 1) k (v 2) :=
+  (exists_stFm.{u} k).choose_spec.2.2 D v hD hv
+
+/-- The paper's `St_k(ξ)^M`: the quantifiers of `stFm` restricted to the variable `3`. -/
+noncomputable def stRelFm (k : ℕ) : Fm := Fm.relTo 3 (stFm.{u} k)
+
+theorem stRelFm_eq (k : ℕ) : stRelFm.{u} k = Fm.relTo 3 (stFm.{u} k) := rfl
+
+theorem isDelta0_stRelFm (k : ℕ) : IsDelta0 (stRelFm.{u} k) :=
+  relTo_delta0 3 (stFm.{u} k) (notMem_vars_stFm.{u} k)
+
+theorem fv_stRelFm (k : ℕ) : ∀ i ∈ fv (stRelFm.{u} k), i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 := by
+  intro i hi
+  have h := fv_relTo_subset 3 (stFm.{u} k) hi
+  rw [Finset.mem_insert] at h
+  rcases h with rfl | h
+  · exact Or.inr (Or.inr (Or.inr rfl))
+  · have := fv_stFm.{u} k h
+    simp only [Finset.mem_insert, Finset.mem_singleton] at this
+    tauto
+
+/-- The valuation `0 ↦ h`, `1 ↦ w`, `2 ↦ ξ`, `3 ↦ M`. -/
+def stVal (h w ξ M : ZFSet.{u}) : ℕ → ZFSet.{u} :=
+  fun i => if i = 0 then h else if i = 1 then w else if i = 2 then ξ else M
+
+@[simp] theorem stVal_zero (h w ξ M : ZFSet.{u}) : stVal h w ξ M 0 = h := rfl
+@[simp] theorem stVal_one (h w ξ M : ZFSet.{u}) : stVal h w ξ M 1 = w := rfl
+@[simp] theorem stVal_two (h w ξ M : ZFSet.{u}) : stVal h w ξ M 2 = ξ := rfl
+@[simp] theorem stVal_three (h w ξ M : ZFSet.{u}) : stVal h w ξ M 3 = M := rfl
+
+/-- Definition 15.4, over the padding `TV_q`:
+
+    Rel_k(ξ, η) :⟺ Ord(ξ) ∧ Ord(η) ∧ ξ < η ∧ ∃M ∃c (LCode(η, M, c) ∧ St_k(ξ)^M).
+
+The last conjunct is the relativized formula itself, asserted unconditionally. -/
+def RelKP (D : ZFSet.{u} → Prop) (h w : ZFSet.{u}) (k : ℕ) (ξ η : ZFSet.{u}) : Prop :=
+  ξ.IsOrdinal ∧ η.IsOrdinal ∧ ξ ∈ η ∧
+    ∃ M, D M ∧ ∃ c, D c ∧ LCode h w η M c ∧ Sat D (stVal h w ξ M) (stRelFm.{u} k)
+
+/-- The relativized formula expresses the semantic relativization when `M` is a transitive
+nonempty subset of the domain containing the parameters — which is what `LCode` forces. -/
+theorem sat_stRelFm_iff (k : ℕ) {D : ZFSet.{u} → Prop} {h w ξ M : ZFSet.{u}}
+    (hDM : ∀ x ∈ M, D x) (htr : M.IsTransitive) (hne : ∃ z, z ∈ M)
+    (hh : h ∈ M) (hw : w ∈ M) (hξ : ξ ∈ M) :
+    Sat D (stVal h w ξ M) (stRelFm.{u} k) ↔ StKP.{u} (· ∈ M) h w k ξ := by
+  have hval : ValD (· ∈ M) {0, 1, 2} (stVal h w ξ M) := by
+    intro i hi
+    simp only [Finset.mem_insert, Finset.mem_singleton] at hi
+    rcases hi with rfl | rfl | rfl
+    · exact hh
+    · exact hw
+    · exact hξ
+  rw [stRelFm_eq, sat_relTo 3 (stFm.{u} k) (stVal h w ξ M) M (notMem_vars_stFm.{u} k)
+    (stVal_three h w ξ M) (transDom_mem htr) (fun y hy => hval y (fv_stFm.{u} k hy)) hDM]
+  exact sat_stFm k (goodDom_mem htr hne) hval
+
+/-- `St_k(ξ)^M` is Δ₀ in the parameters, with no side condition. -/
+theorem delta0Def_stRelFm (k : ℕ) (h w x m : ℕ) (hhw : h ≠ w) (hhx : h ≠ x) (hhm : h ≠ m)
+    (hwx : w ≠ x) (hwm : w ≠ m) (hxm : x ≠ m) :
+    Delta0Def.{u} {h, w, x, m}
+      (fun D v => Sat D (stVal (v h) (v w) (v x) (v m)) (stRelFm.{u} k)) := by
+  classical
+  obtain ⟨ρ, hρ0, hρ1, hρ2, hρ3, hρinj⟩ :
+      ∃ ρ : ℕ → ℕ, ρ 0 = h ∧ ρ 1 = w ∧ ρ 2 = x ∧ ρ 3 = m ∧ Function.Injective ρ := by
+    refine ⟨fun i => if i = 0 then h else if i = 1 then w else if i = 2 then x
+      else if i = 3 then m else i + (h + w + x + m + 1), by norm_num, by norm_num, by norm_num,
+      by norm_num, ?_⟩
+    intro a b hab
+    beta_reduce at hab
+    split_ifs at hab <;> omega
+  refine ⟨rename ρ (stRelFm.{u} k), (isDelta0_stRelFm.{u} k).rename hρinj, ?_, ?_⟩
+  · rw [fv_rename ρ hρinj]
+    intro z hz
+    obtain ⟨i, hi, rfl⟩ := Finset.mem_image.mp hz
+    simp only [Finset.mem_insert, Finset.mem_singleton]
+    rcases fv_stRelFm.{u} k i hi with rfl | rfl | rfl | rfl
+    · exact Or.inl hρ0
+    · exact Or.inr (Or.inl hρ1)
+    · exact Or.inr (Or.inr (Or.inl hρ2))
+    · exact Or.inr (Or.inr (Or.inr hρ3))
+  · intro D v _ _
+    rw [sat_rename hρinj]
+    refine sat_congr ?_
+    intro z hz
+    rcases fv_stRelFm.{u} k z hz with rfl | rfl | rfl | rfl
+    · simp [Function.comp_apply, hρ0]
+    · simp [Function.comp_apply, hρ1]
+    · simp [Function.comp_apply, hρ2]
+    · simp [Function.comp_apply, hρ3]
+
 theorem sigmaDef_RelKP (k : ℕ) (h w x y : ℕ) (hhw : h ≠ w) (hhx : h ≠ x) (hhy : h ≠ y)
     (hwx : w ≠ x) (hwy : w ≠ y) (hxy : x ≠ y) :
     SigmaDef 1 {h, w, x, y} (fun D v => RelKP.{u} D (v h) (v w) k (v x) (v y)) := by
   set m := h + w + x + y + 1 with hm
-  obtain ⟨Q, hQ0, hQiff⟩ := (piDef_StKP.{u} k h w x hhw hhx hwx).relativize m (by
-    simp only [Finset.mem_insert, Finset.mem_singleton]; omega)
-  have hG : Delta0Def.{u} {h, w, x, m} (fun _ v =>
-      (v m).IsTransitive ∧ (∃ z, z ∈ v m) ∧ v h ∈ v m ∧ v w ∈ v m ∧ v x ∈ v m) := by
-    refine ((delta0_isTransitive.{u} m).and ((delta0_nonemptyMem.{u} m).and
-      ((Delta0Def.mem.{u} h m).and ((Delta0Def.mem.{u} w m).and
-        (Delta0Def.mem.{u} x m))))).of_eq ?_
-    ext j
-    simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union]
-    tauto
+  have hSt : Delta0Def.{u} {h, w, x, m}
+      (fun D v => Sat D (stVal (v h) (v w) (v x) (v m)) (stRelFm.{u} k)) :=
+    delta0Def_stRelFm.{u} k h w x m hhw hhx (by omega) hwx (by omega) (by omega)
   have hLC : Delta0Def.{u} {h, w, y, m, m + 1}
       (fun _ v => LCode (v h) (v w) (v y) (v m) (v (m + 1))) :=
     delta0_lcode h w y m (m + 1) hhw hhy (by omega) (by omega) hwy (by omega) (by omega)
       (by omega) (by omega) (by omega)
   have hInner : Delta0Def.{u} {h, w, x, y, m, m + 1} (fun D v =>
       LCode (v h) (v w) (v y) (v m) (v (m + 1)) ∧
-      ((v m).IsTransitive → (∃ z, z ∈ v m) → v h ∈ v m → v w ∈ v m → v x ∈ v m →
-        StKP.{u} (· ∈ v m) (v h) (v w) k (v x))) := by
-    refine ((hLC.and (hG.imp hQ0)).congr ?_).of_eq ?_
-    · intro D v _ _
-      have key : ∀ (_ : (v m).IsTransitive ∧ (∃ z, z ∈ v m) ∧ v h ∈ v m ∧ v w ∈ v m ∧ v x ∈ v m),
-          (Q D v ↔ StKP.{u} (· ∈ v m) (v h) (v w) k (v x)) := by
-        rintro ⟨htr, hne, hhm, hwm, hxm⟩
-        refine hQiff D v (goodDom_mem htr hne) ?_
-        intro i hi
-        simp only [Finset.mem_insert, Finset.mem_singleton] at hi
-        rcases hi with rfl | rfl | rfl
-        · exact hhm
-        · exact hwm
-        · exact hxm
-      refine and_congr Iff.rfl ?_
-      constructor
-      · intro H htr hne hhm hwm hxm
-        exact (key ⟨htr, hne, hhm, hwm, hxm⟩).mp (H ⟨htr, hne, hhm, hwm, hxm⟩)
-      · rintro H ⟨htr, hne, hhm, hwm, hxm⟩
-        exact (key ⟨htr, hne, hhm, hwm, hxm⟩).mpr (H htr hne hhm hwm hxm)
-    · ext j
-      simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union]
-      omega
+      Sat D (stVal (v h) (v w) (v x) (v m)) (stRelFm.{u} k)) := by
+    refine (hLC.and hSt).of_eq ?_
+    ext j
+    simp only [Finset.mem_insert, Finset.mem_singleton, Finset.mem_union]
+    omega
   have hex := ((hInner.sigma 1).ex (m + 1) le_rfl).ex m le_rfl
   have hOrd : Delta0Def.{u} {x, y}
       (fun _ v => (v x).IsOrdinal ∧ (v y).IsOrdinal ∧ v x ∈ v y) := by
@@ -235,17 +319,20 @@ expresses `L ξ ≺*_{k+2} L η`. -/
 theorem relKP_iff {ξ η θ : Ordinal.{u}} (hθ : GoodOrd θ) (hη : GoodOrd η) (hξ : GoodOrd ξ)
     (hξη : ξ < η) (hηθ : η < θ) (k : ℕ) :
     RelKP (· ∈ L θ) (L Ordinal.omega0) ωZ k ξ.toZFSet η.toZFSet ↔ ElemHat (k + 2) (L ξ) (L η) := by
+  have hbridge := sat_stRelFm_iff (D := (· ∈ L θ)) (h := L Ordinal.omega0.{u}) (w := ωZ.{u})
+    (ξ := ξ.toZFSet) (M := L η) k
+    (fun z hz => hθ.transitive.subset_of_mem (hθ.L_mem hηθ) hz) hη.transitive
+    ⟨ωZ, hη.omegaZ_mem⟩ hη.Lomega_mem hη.omegaZ_mem (hη.toZFSet_mem hξη)
   constructor
   · rintro ⟨-, -, -, M, -, c, -, hcode, hst⟩
     have hM' : M = L η := lcode_sound hcode
     subst hM'
-    exact (stKP_iff hη hξ hξη k).mp
-      (hst hη.transitive ⟨ωZ, hη.omegaZ_mem⟩ hη.Lomega_mem hη.omegaZ_mem (hη.toZFSet_mem hξη))
+    exact (stKP_iff hη hξ hξη k).mp (hbridge.mp hst)
   · intro hel
     obtain ⟨c, hc, hcode⟩ := hθ.lcode_L hηθ
     exact ⟨ZFSet.isOrdinal_toZFSet ξ, ZFSet.isOrdinal_toZFSet η,
       Ordinal.toZFSet_mem_toZFSet_iff.mpr hξη,
-      L η, hθ.L_mem hηθ, c, hc, hcode, fun _ _ _ _ _ => (stKP_iff hη hξ hξη k).mpr hel⟩
+      L η, hθ.L_mem hηθ, c, hc, hcode, hbridge.mpr ((stKP_iff hη hξ hξη k).mpr hel)⟩
 
 /-- **Lemma 15.5(1)**: for admissible `ξ < η`, the *external* `Rel_k(ξ, η)` — read in the outside
 universe, where the domain is everything — expresses `L ξ ≺*_{k+2} L η`, i.e. `ξ ◁_k η`. -/
@@ -253,18 +340,20 @@ theorem relKP_iff_ext {ξ η : Ordinal.{u}} (hη : GoodOrd η) (hξ : GoodOrd ξ
     (k : ℕ) :
     RelKP (fun _ => True) (L Ordinal.omega0) ωZ k ξ.toZFSet η.toZFSet ↔
       ElemHat (k + 2) (L ξ) (L η) := by
+  have hbridge := sat_stRelFm_iff (D := fun _ : ZFSet.{u} => True) (h := L Ordinal.omega0.{u})
+    (w := ωZ.{u}) (ξ := ξ.toZFSet) (M := L η) k (fun _ _ => trivial) hη.transitive
+    ⟨ωZ, hη.omegaZ_mem⟩ hη.Lomega_mem hη.omegaZ_mem (hη.toZFSet_mem hξη)
   constructor
   · rintro ⟨-, -, -, M, -, c, -, hcode, hst⟩
     have hM' : M = L η := lcode_sound hcode
     subst hM'
-    exact (stKP_iff hη hξ hξη k).mp
-      (hst hη.transitive ⟨ωZ, hη.omegaZ_mem⟩ hη.Lomega_mem hη.omegaZ_mem (hη.toZFSet_mem hξη))
+    exact (stKP_iff hη hξ hξη k).mp (hbridge.mp hst)
   · intro hel
     obtain ⟨M, c, hcode⟩ := lcode_exists_ext η
     have hM' : M = L η := lcode_sound hcode
     subst hM'
     exact ⟨ZFSet.isOrdinal_toZFSet ξ, ZFSet.isOrdinal_toZFSet η,
       Ordinal.toZFSet_mem_toZFSet_iff.mpr hξη,
-      L η, trivial, c, trivial, hcode, fun _ _ _ _ _ => (stKP_iff hη hξ hξη k).mpr hel⟩
+      L η, trivial, c, trivial, hcode, hbridge.mpr ((stKP_iff hη hξ hξη k).mpr hel)⟩
 
 end BM4.ST

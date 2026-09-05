@@ -72,14 +72,12 @@ branch `feature/closed-form` as `Bm4/CopyClosed.lean`. Exactly one of `CopyPaper
 | `SatInL.lean` | Lem. 10.5(1) | satisfaction codes exist **inside** an admissible `L θ` |
 | `LCode.lean`, `LCodeEx.lean` | Def. 9.1, Lem. 9.2, 10.5(2) | internal codes for the `L`-hierarchy, soundness and existence |
 | `Blk.lean` | §12 | simultaneous block updates of assignments |
-| `Truth.lean`, `TrCorrect.lean`, `BaseOK.lean` | §13 | the truth predicates `Tr_{Σ̂q}` / `Tr_{Π̂q}`, Lemma 13.5 (complexity) and Theorem 13.6 (correctness) |
+| `Truth.lean`, `TrCorrect.lean`, `BaseOK.lean` | §13 | the Δ₀ base of the truth predicates (Definition 13.2) and Lemma 13.3 |
 | `Elem.lean` | §14 | `≺*q`, the finite-stage Tarski–Vaught criterion |
-| `TV.lean`, `StRel.lean` | §14–15 | `TV_q`, `St_k`, `Rel_k`, their complexity (Lem. 15.1) and correctness (Lem. 15.3, 15.5) |
-| `AdmP.lean`, `AdmPOK.lean` | Def. 11.1, Lem. 11.2 | an internal Σ̂₁ admissibility predicate, built directly from Δ₀-collection |
 | `KPAx.lean`, `KPSat.lean`, `AdmKP.lean` | Def. 11.1, Lem. 11.2 | **the paper's** internal admissibility predicate: the KP axioms as codes (`KPAxCode`), their truth in `L θ`, and `AdmKP` with `admKP_iff` |
 | `BlkP.lean` | §12 | block updates that **pad** the domain, as the paper prescribes |
 | `BFCodeD.lean` | Def. 12.1 | code recognizers requiring the block variables to be **distinct**, as the paper prescribes |
-| `TrP.lean`, `StRelP.lean` | §13–15 | the truth predicates over the padded updates, and `tvqP_iff_elemHat` — **Lemma 15.3 by the paper's argument**, without the Lévy-complexity detour |
+| `TrP.lean`, `TrPV.lean`, `StRelP.lean`, `StKP.lean` | §13–15 | the truth predicates `Tr_{Σ̂q}` / `Tr_{Π̂q}` of Definition 13.4 (over §12's padded block update), Lemma 13.5 (complexity), Theorem 13.6 (correctness; `TrPV.lean` is its external-universe half), and `TV_q`, `St_k`, `Rel_k` with their correctness (Lemmas 15.3 and 15.5) |
 | `StKP.lean` | Def. 15.2, 15.4, Lem. 15.3, 15.5 | `St_k` and `Rel_k` over the padded route, their complexity and correctness |
 | `Omega1.lean`, `Skolem.lean`, `AdmTrans.lean` | §16 | countability of `L γ` below `ω₁`, admissibility of `ω₁`, the initial pair `L Λ ≺ L ω₁` |
 | `Good.lean`, `Stable.lean` | §15 | the `GoodOrd` interface, admissible ordinals as labels, `◁ₖ` |
@@ -103,10 +101,11 @@ branch `feature/closed-form` as `Bm4/CopyClosed.lean`. Exactly one of `CopyPaper
   correctness of the truth predicate (`StRelP.lean`); and internal admissibility is the truth of
   the KP axioms at the empty assignment, the schema instances being recognized in universally
   closed form (`KPAx.lean`, `AdmKP.lean`).
-- `Reflect.lean` uses `AdmKP` / `StKP` / `RelKP`, so the main theorems do not depend on
-  `AdmP` / `StK` / `RelK` — replacing `stK_iff`, `relK_iff` and `admP_iff'` by `sorry` leaves
-  `terminates_unconditional` free of `sorryAx`. Those earlier predicates are kept because the
-  paper's route is built on top of their auxiliary lemmas.
+- §12–§15 used to be formalized twice: once over a block update without the `∅` padding, and
+  once the paper's way.  Injecting `sorry` confirmed that the main theorems never used the
+  former, so it was deleted (`TV.lean`, the tail of `StRel.lean`, `TrSigS`/`TrPiS` of
+  `Truth.lean`, `IsBlkUpd` of `Blk.lean`, `AdmP.lean` and `AdmPOK.lean`).  Only the paper's
+  route remains.
 - Theorem 21.1 is proved the paper's way — choice, ω-recursion and the least element of the set
   of label heights — and Proposition 22.1 is derived from Theorem 1.2, not reproved by induction
   on heights.

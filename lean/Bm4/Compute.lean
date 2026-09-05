@@ -11,6 +11,12 @@ abbrev Mat := List (List ℕ)
 
 def colv (A : Mat) (i k : ℕ) : ℕ := (A.getD i []).getD k 0
 
+/-- Normalise a column to length exactly `r`, padding missing entries with `0`. -/
+def padTo (r : ℕ) (c : List ℕ) : List ℕ := (List.range r).map fun k => c.getD k 0
+
+@[simp] theorem length_padTo (r : ℕ) (c : List ℕ) : (padTo r c).length = r := by
+  simp [padTo]
+
 /-- Largest valid structural candidate `j < i` for row `k`, given the candidate test. -/
 def parentOf (A : Mat) (cand : ℕ → ℕ → Bool) (k i : ℕ) : Option ℕ :=
   ((List.range i).filter (fun j => cand j i && decide (colv A j k < colv A i k))).getLast?
@@ -33,25 +39,42 @@ def candC (A : Mat) : ℕ → ℕ → ℕ → Bool
 
 def parentC (A : Mat) (k i : ℕ) : Option ℕ := parentOf A (candC A k) k i
 
-/-- Definition 5.1. -/
-def expandC (A : Mat) (N : ℕ) : Mat :=
-  match A with
-  | [] => []
-  | _ =>
-    let r := (A.headD []).length
-    let c := A.length - 1
-    let rows := (List.range r).filter (fun k => (parentC A k c).isSome)
-    match rows.getLast? with
-    | none => A.dropLast
-    | some m =>
-      let p := (parentC A m c).getD 0
-      let s := c - p
-      let Δ := fun k => colv A c k - colv A p k
-      let asc := fun k j => decide (k < m) && (decide (j = 0) || (ancC A k (p + j)).contains p)
-      let B := fun q => (List.range s).map fun j =>
-        (List.range r).map fun k =>
-          if asc k j then colv A (p + j) k + q * Δ k else colv A (p + j) k
-      A.take p ++ (List.range (N + 1)).flatMap B
+/-- Definition 5.1, for an `r`-row array `A`.
+
+The paper fixes the number of rows `r` as a parameter of the array ("let `A` be an
+`r`-row array") and states that the operation does not change `r`, so `r` is an
+explicit argument here rather than being read off the first column, and every
+output column -- the copied `G` part included -- is normalised to length exactly
+`r` (see `length_mem_expandC`). -/
+def expandC (r : ℕ) (A : Mat) (N : ℕ) : Mat :=
+  let c := A.length - 1
+  let rows := (List.range r).filter (fun k => (parentC A k c).isSome)
+  match rows.getLast? with
+  | none => A.dropLast.map (padTo r)
+  | some m =>
+    let p := (parentC A m c).getD 0
+    let s := c - p
+    let Δ := fun k => colv A c k - colv A p k
+    let asc := fun k j => decide (k < m) && (decide (j = 0) || (ancC A k (p + j)).contains p)
+    let B := fun q => (List.range s).map fun j =>
+      (List.range r).map fun k =>
+        if asc k j then colv A (p + j) k + q * Δ k else colv A (p + j) k
+    (A.take p).map (padTo r) ++ (List.range (N + 1)).flatMap B
+
+/-- The operation does not change the number of rows: every output column has length `r`. -/
+theorem length_mem_expandC (r : ℕ) (A : Mat) (N : ℕ) :
+    ∀ c ∈ expandC r A N, c.length = r := by
+  intro c hc
+  rw [expandC] at hc
+  split at hc
+  · obtain ⟨a, -, rfl⟩ := List.mem_map.mp hc
+    simp
+  · rcases List.mem_append.mp hc with h | h
+    · obtain ⟨a, -, rfl⟩ := List.mem_map.mp h
+      simp
+    · obtain ⟨q, -, hq⟩ := List.mem_flatMap.mp h
+      obtain ⟨j, -, rfl⟩ := List.mem_map.mp hq
+      simp
 
 /-! ### Printing / parsing in yaBMS syntax -/
 
@@ -64,6 +87,13 @@ def parseMat (s : String) : Mat :=
     if t.isEmpty then none
     else some ((t.splitOn ",").map fun x => x.trimAscii.toString.toNat!)
 
-def run (s : String) (N : ℕ) : String := showMat (expandC (parseMat s) N)
+/-- Row count of a parsed array: the longest column, so that no entry is dropped.
+For the well-formed (rectangular) inputs the paper considers this is the common
+column length. -/
+def rowsOf (A : Mat) : ℕ := A.foldl (fun m c => max m c.length) 0
+
+def run (s : String) (N : ℕ) : String :=
+  let A := parseMat s
+  showMat (expandC (rowsOf A) A N)
 
 end BM4C

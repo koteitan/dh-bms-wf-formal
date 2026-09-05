@@ -7,7 +7,6 @@
   says exactly `L ξ ≺*_{k+2} L η`.
 -/
 import Bm4.SetTheory.Good
-import Bm4.SetTheory.TV
 import Bm4.SetTheory.BFConv
 
 universe u
@@ -222,150 +221,20 @@ theorem exists_norm : ∀ j : ℕ,
           exact Fm.sat_rename_avoidMap (Fm.alls l ψ) hKb D v
         exact e1.trans (e2.trans e3)
 
+/-! ### Auxiliary Δ₀ predicate -/
+
+/-- `M` is nonempty. -/
+theorem delta0_nonemptyMem (M : ℕ) : Delta0Def.{u} {M} (fun _ v => ∃ x, x ∈ v M) := by
+  have h1 := Delta0Def.top.{u}.bex (M + 1) M (by omega)
+  refine (h1.congr ?_).of_eq ?_
+  · intro D v _ _
+    exact ⟨fun ⟨x, hx, _⟩ => ⟨x, hx⟩, fun ⟨x, hx⟩ => ⟨x, hx, trivial⟩⟩
+  · ext k
+    simp
+
 /-! ### Elementary facts -/
 
 theorem isSeqA_of_subset {A B a : ZFSet.{u}} (h : IsSeqA ωZ A a) (hAB : A ⊆ B) :
     IsSeqA ωZ B a := ⟨h.1, h.2.1, fun i x hix => hAB (h.2.2 i x hix)⟩
-
-theorem tvBody_of_tvConj {D : ZFSet.{u} → Prop} {h w M : ZFSet.{u}} :
-    ∀ (q j : ℕ), 1 ≤ j → j ≤ q → TVConj D h w q M → TVBody D h w j M := by
-  intro q
-  induction q with
-  | zero => intro j h1 h2 _; omega
-  | succ q ih =>
-    intro j h1 h2 hc
-    rcases Nat.lt_or_ge j (q + 1) with hlt | hge
-    · exact ih j h1 (by omega) hc.1
-    · have hj : j = q + 1 := by omega
-      subst hj
-      exact hc.2
-
-/-! ### The truth predicate transfers between `L ξ` and `L θ`
-
-This uses only the Lévy complexity of `TrSigS` (Lemma 13.5) and `≺*`, not the correctness of the
-truth predicate; in particular no hypothesis on the code or on the assignment is needed. -/
-
-theorem trSigS_transfer {ξ θ : Ordinal.{u}} (hθ : GoodOrd θ) (hξ : GoodOrd ξ) (hlt : ξ < θ)
-    {k : ℕ} (hel : ElemHat (k + 2) (L ξ) (L θ)) {j : ℕ} (hj : j ≤ k + 2)
-    {e a : ZFSet.{u}} (he : e ∈ L ξ) (ha : a ∈ L ξ) :
-    TrSigS (· ∈ L θ) (L Ordinal.omega0) ωZ j e a ↔
-      TrSigS (· ∈ L ξ) (L Ordinal.omega0) ωZ j e a := by
-  classical
-  obtain ⟨φ, hφ, hfvφ, hsat⟩ := (trComplexity.{u} j 0 1 2 3 (by omega) (by omega) (by omega)
-    (by omega) (by omega) (by omega)).1
-  set vv : ℕ → ZFSet.{u} := fun i =>
-    if i = 0 then L Ordinal.omega0.{u} else if i = 1 then ωZ.{u} else if i = 2 then e else a
-    with hvv
-  have hv0 : vv 0 = L Ordinal.omega0.{u} := by simp [hvv]
-  have hv1 : vv 1 = ωZ.{u} := by simp [hvv]
-  have hv2 : vv 2 = e := by simp [hvv]
-  have hv3 : vv 3 = a := by simp [hvv]
-  have hvalξ : ValD (· ∈ L ξ) ({0, 1, 2, 3} : Finset ℕ) vv := by
-    intro i hi
-    simp only [Finset.mem_insert, Finset.mem_singleton] at hi
-    rcases hi with rfl | rfl | rfl | rfl
-    · rw [hv0]; exact hξ.Lomega_mem
-    · rw [hv1]; exact hξ.omegaZ_mem
-    · rw [hv2]; exact he
-    · rw [hv3]; exact ha
-  have hsub : L ξ ⊆ L θ := L_mono hlt.le
-  have hvalθ : ValD (· ∈ L θ) ({0, 1, 2, 3} : Finset ℕ) vv := fun i hi => hsub (hvalξ i hi)
-  have hgξ : GoodDom (· ∈ L ξ) := goodDom_mem hξ.transitive ⟨ωZ, hξ.omegaZ_mem⟩
-  have hgθ : GoodDom (· ∈ L θ) := goodDom_mem hθ.transitive ⟨ωZ, hθ.omegaZ_mem⟩
-  have h1 := hsat (· ∈ L ξ) vv hgξ hvalξ
-  have h2 := hsat (· ∈ L θ) vv hgθ hvalθ
-  simp only [hv0, hv1, hv2, hv3] at h1 h2
-  have hE : SatIn (L ξ) vv φ ↔ SatIn (L θ) vv φ := by
-    refine hel.sigma (j := max j 1) (by omega) hφ ?_
-    intro x hx
-    exact hvalξ x (hfvφ hx)
-  rw [← h1, ← h2]
-  exact hE.symm
-
-/-! ### The bridge: `TV_{k+2}(L ξ)` computed in `L θ` is `L ξ ≺*_{k+2} L θ` -/
-
-theorem tvq_iff_elemHat {ξ θ : Ordinal.{u}} (hθ : GoodOrd θ) (hξ : GoodOrd ξ) (hlt : ξ < θ)
-    (k : ℕ) :
-    TVq (· ∈ L θ) (L Ordinal.omega0) ωZ (k + 2) (L ξ) ↔ ElemHat (k + 2) (L ξ) (L θ) := by
-  constructor
-  · -- `TV` gives elementarity: normalise, then use the correctness of the truth predicate.
-    rintro ⟨-, -, -, -, hconj⟩
-    refine elemHat_of_downward hξ.transitive hθ.transitive (L_mono hlt.le) ?_
-    intro j hj1 hj2 φ hφ v hv hsatθ
-    obtain ⟨b, hbSig, hbnd, -, hbsat⟩ := (exists_norm.{u} j).1 0 φ hφ
-    have hemp : (∅ : ZFSet.{u}) ∈ L ξ := hξ.wClosed.empty_mem
-    obtain ⟨a0, ha0, -, ha0val⟩ := exists_seq_of_val (fv φ) v hv
-    obtain ⟨a, ha, -, haval, hadom⟩ := exists_padSeq ha0 hemp (b.blockVars.sum + 1)
-    have haξ : a ∈ L ξ := isSeqA_mem_of_wClosed hξ.wClosed ha
-    have hsub : L ξ ⊆ L θ := L_mono hlt.le
-    have hLω : L Ordinal.omega0.{u} ⊆ L ξ := L_mono hξ.omega_lt.le
-    have hcodeξ : BF.code.{u} b ∈ L ξ := hLω (BF.code_mem_Lω b)
-    have hdom : ∀ i ∈ b.blockVars, ∃ y, ZFSet.pair (natZ.{u} i) y ∈ a := by
-      intro i hi
-      have := List.le_sum_of_mem hi
-      exact hadom i (by omega)
-    have hGξ : GoodAsn (L ξ) b a := ⟨ha, haξ, hdom, hbnd, hcodeξ, hξ.wClosed⟩
-    have hGθ : GoodAsn (L θ) b a :=
-      ⟨isSeqA_of_subset ha hsub, hsub haξ, hdom, hbnd, hsub hcodeξ, hθ.wClosed⟩
-    have hagree : ∀ x ∈ fv φ, v x = SeqVal a x := by
-      intro x hx
-      rw [haval, ha0val x hx]
-    have hsat1 : Sat (· ∈ L θ) (SeqVal a) φ := (sat_congr hagree).mp hsatθ
-    have hsat2 : Sat (· ∈ L θ) (SeqVal a) b.toFm :=
-      (hbsat _ ⟨ωZ, hθ.omegaZ_mem⟩ (SeqVal a)).mpr hsat1
-    have htrθ : TrSigS (· ∈ L θ) (L Ordinal.omega0) ωZ j (BF.code.{u} b) a :=
-      (trSigS_correct hθ.transitive hθ.base j b hbSig a hGθ).mpr hsat2
-    have htrξ : TrSigS (· ∈ L ξ) (L Ordinal.omega0) ωZ j (BF.code.{u} b) a :=
-      tvBody_of_tvConj (k + 2) j hj1 hj2 hconj (BF.code.{u} b) hcodeξ a haξ
-        ((isSigCodeW_iff j _).mpr ⟨b, hbSig, rfl⟩) ha htrθ
-    have hsat3 : Sat (· ∈ L ξ) (SeqVal a) b.toFm :=
-      (trSigS_correct hξ.transitive hξ.base j b hbSig a hGξ).mp htrξ
-    have hsat4 : Sat (· ∈ L ξ) (SeqVal a) φ :=
-      (hbsat _ ⟨ωZ, hξ.omegaZ_mem⟩ (SeqVal a)).mp hsat3
-    exact (sat_congr hagree).mpr hsat4
-  · -- elementarity gives `TV`: the truth predicate is Σ̂j, hence absolute between `L ξ` and `L θ`.
-    intro hel
-    refine ⟨hξ.transitive, ⟨ωZ, hξ.omegaZ_mem⟩, hξ.Lomega_mem, hξ.omegaZ_mem, ?_⟩
-    have key : ∀ q, q ≤ k + 2 → TVConj (· ∈ L θ) (L Ordinal.omega0) ωZ q (L ξ) := by
-      intro q
-      induction q with
-      | zero => intro _; trivial
-      | succ q ih =>
-        intro hq
-        refine ⟨ih (by omega), ?_⟩
-        intro e he a ha _ _ htr
-        exact (trSigS_transfer hθ hξ hlt hel (by omega) he ha).mp htr
-    exact key (k + 2) le_rfl
-
-/-! ### Lemma 15.3 and Lemma 15.5 -/
-
-/-- **Lemma 15.3**: for good `ξ < θ`, the internal predicate `St_k(ξ)` evaluated in `L θ`
-expresses `L ξ ≺*_{k+2} L θ`. -/
-theorem stK_iff {ξ θ : Ordinal.{u}} (hθ : GoodOrd θ) (hξ : GoodOrd ξ) (hlt : ξ < θ) (k : ℕ) :
-    StK (· ∈ L θ) (L Ordinal.omega0) ωZ k ξ.toZFSet ↔ ElemHat (k + 2) (L ξ) (L θ) := by
-  constructor
-  · intro hst
-    obtain ⟨c, hc, hcode⟩ := hθ.lcode_L hlt
-    exact (tvq_iff_elemHat hθ hξ hlt k).mp (hst (L ξ) (hθ.L_mem hlt) c hc hcode)
-  · intro hel M hM c hc hcode
-    have hM' : M = L ξ := lcode_sound hcode
-    subst hM'
-    exact (tvq_iff_elemHat hθ hξ hlt k).mpr hel
-
-/-- **Lemma 15.5**: for good `ξ < η < θ`, the internal predicate `Rel_k(ξ, η)` evaluated in `L θ`
-expresses `L ξ ≺*_{k+2} L η`. -/
-theorem relK_iff {ξ η θ : Ordinal.{u}} (hθ : GoodOrd θ) (hη : GoodOrd η) (hξ : GoodOrd ξ)
-    (hξη : ξ < η) (hηθ : η < θ) (k : ℕ) :
-    RelK (· ∈ L θ) (L Ordinal.omega0) ωZ k ξ.toZFSet η.toZFSet ↔ ElemHat (k + 2) (L ξ) (L η) := by
-  constructor
-  · rintro ⟨M, -, -, c, -, hcode, hst⟩
-    have hM' : M = L η := lcode_sound hcode
-    subst hM'
-    exact (stK_iff hη hξ hξη k).mp hst
-  · intro hel
-    obtain ⟨c, hc, hcode⟩ := hθ.lcode_L hηθ
-    exact ⟨L η, hθ.L_mem hηθ,
-      ⟨hη.transitive, ⟨ωZ, hη.omegaZ_mem⟩, hη.Lomega_mem, hη.omegaZ_mem, hη.toZFSet_mem hξη⟩,
-      c, hc, hcode, (stK_iff hη hξ hξη k).mpr hel⟩
 
 end BM4.ST

@@ -9,8 +9,9 @@ open Classical
 namespace BM4
 
 /-- An `r`-row array of length `len`. Column `i` is `col i : ℕ → ℕ` (row `k ↦` entry).
-Only rows `k < r` and positions `i < len` are meaningful; the parent/ancestor relations below
-never look at `len`, which makes prefix invariance (Lemma 3.1) automatic. -/
+The paper's `A ∈ (ℕ^r)^ℓ` only has entries at `i ∈ Pos(A) = {0,…,len-1}` and `k < r`; here
+`col` is total and the values outside that range are junk, so the parent/ancestor relations
+below carry `k < r` and `i ∈ Pos(A)` as side conditions, exactly as Definition 2.1 does. -/
 structure Arr (r : ℕ) where
   len : ℕ
   col : ℕ → ℕ → ℕ
@@ -19,10 +20,14 @@ variable {r : ℕ}
 
 /-- `parentRel A cand k j i`: `j` is the `k`-parent of `i`, given the structural
 candidate relation `cand` for row `k`: `j` is a valid structural candidate and every
-larger structural candidate is invalid. -/
+larger structural candidate is invalid.
+
+The last two conjuncts are Definition 2.1's side conditions `k < r` and `i ∈ Pos(A)`.  They are
+placed last only so that the projections of the first four keep their names; `parent_row_lt` and
+`parent_target_lt` in `Bm4/Basic.lean` read them off.  `j ∈ Pos(A)` follows from `j < i`. -/
 def parentRel (A : Arr r) (cand : ℕ → ℕ → Prop) (k : ℕ) (j i : ℕ) : Prop :=
   j < i ∧ cand j i ∧ A.col j k < A.col i k ∧
-    ∀ j', j < j' → j' < i → cand j' i → A.col i k ≤ A.col j' k
+    (∀ j', j < j' → j' < i → cand j' i → A.col i k ≤ A.col j' k) ∧ k < r ∧ i < A.len
 
 /-- Strict `k`-ancestor relation `j ≺ᴬₖ i`, by recursion on the row `k`.
 Structural `0`-candidates are all `j < i`; structural `(k+1)`-candidates are strict `k`-ancestors. -/
@@ -96,8 +101,21 @@ noncomputable def seq (A : Arr r) (n : ℕ → ℕ) : ℕ → Arr r
   | 0 => A
   | t + 1 => expand (seq A n t) (n t)
 
-/-- One-step expansion relation on BM4 (Section 22): `A R B` iff `B ≠ ∅` and `A = B[n]`. -/
-def R (r : ℕ) (A B : Arr r) : Prop :=
-  Reachable r B ∧ 0 < B.len ∧ ∃ n, A = expand B n
+/-- An element of BM4 with `r` rows, i.e. an array reachable from `E r`. -/
+def Elt (r : ℕ) : Type := {A : Arr r // Reachable r A}
+
+/-- **Definition 1.1**: BM4 itself — the union over all row counts `r` of the arrays reachable
+from `E r`.  An element carries its row count, which the array alone does not determine. -/
+abbrev Elts : Type := Σ r : ℕ, Elt r
+
+/-- One-step expansion relation on BM4 (Section 22): `A R B` iff `B ≠ ∅` and `A = B[n]`.
+As in the paper, `R` is a relation *on BM4*; membership is carried by the type `Elt r`, not
+written into the relation. -/
+def R (r : ℕ) (A B : Elt r) : Prop :=
+  0 < B.1.len ∧ ∃ n, A.1 = expand B.1 n
+
+/-- The same relation on BM4 itself (Section 22).  Expansion does not change the number of rows,
+so `A R B` forces `A` and `B` to have the same row count. -/
+def R' (A B : Elts) : Prop := ∃ h : A.1 = B.1, R B.1 (h ▸ A.2) B.2
 
 end BM4

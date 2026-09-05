@@ -33,6 +33,14 @@ statements and lines of argument takes priority over shorter proofs or weaker hy
 ├── README.md                  this file (Japanese)
 ├── README-en.md               this file (English)
 ├── paper-corrections.md       corrections proposed to the paper, found while formalizing
+├── diff/                      formalization gaps, one page per proposition of the paper
+│   ├── README.md              index
+│   ├── rule.md                how to write these pages
+│   └── P-01.md .. P-14.md
+├── plan/
+│   ├── fidelity-audit.md      the fidelity audit, one independent agent per section
+│   ├── fidelity-audit-fix.md  the repair log for the 74 U (detour) findings
+│   └── U2P.md                 which U belongs to which proposition
 ├── VERSION
 ├── lean/                      the Lean 4 project
 │   ├── README.md              details: which file corresponds to which section
@@ -58,6 +66,12 @@ statements and lines of argument takes priority over shorter proofs or weaker hy
     ├── formalization-detours.md  places we could not follow the paper, and why
     └── paper-copy-lemma.md    record of proving the copy lemma the paper's way
 ```
+
+## Formalization gaps
+
+Where the Lean text could not follow the paper literally, there is one page per proposition
+of the paper: the paper's statement and proof, the Lean statement and proof, and why it could
+not be written the paper's way. Index: [diff/README.md](diff/README.md).
 
 `lean/Bm4/SetTheory/` is about 77% of the whole. It builds the set theory from scratch: the
 constructible hierarchy `L`, admissible ordinals, codes of Δ₀ formulas, satisfaction codes, the
