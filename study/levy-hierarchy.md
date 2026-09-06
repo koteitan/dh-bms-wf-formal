@@ -161,8 +161,8 @@ $`\square`$
 $`M = \{\emptyset, \{\{\emptyset\}\}\}`$ とする。これは推移的でない。実際
 $`\{\emptyset\} \in \{\{\emptyset\}\} \in M`$ だが $`\{\emptyset\} \notin M`$ である。
 
-$`\varphi(x) \equiv \exists z \in x\ (z = z)`$（「$`x`$ は空でない」）を取り、
-$`x := \{\{\emptyset\}\}`$ を入れる。これは $`\Delta_0`$ である。
+$`\varphi(x) \equiv \exists z \in x\ (z = z)`$（「$`x`$ は空でない」）を取る。
+これは $`\Delta_0`$ である。割り当てを $`\bar a(x) = \{\{\emptyset\}\}`$ と取る。
 
 - $`(M,\in)`$ では、$`c \in M`$ で $`c \in \{\{\emptyset\}\}`$ となるものを探す。
   候補は $`\emptyset`$ と $`\{\{\emptyset\}\}`$ だが、どちらも $`\{\{\emptyset\}\}`$ の元ではない。
@@ -213,7 +213,7 @@ $`\Delta_0`$ のときだけは違わない、というのがこの定理であ�
 
 $`M = L_2 = \{\emptyset, \{\emptyset\}\}`$ を取る。これは推移的である。
 $`\emptyset`$ は元を持たず、$`\{\emptyset\}`$ の唯一の元 $`\emptyset`$ は $`M`$ に属するからである。
-$`x := \{\emptyset\}`$ を入れる。
+割り当てを $`\bar a(x) = \{\emptyset\}`$ と取る。
 
 - $`(M,\in)`$ では、候補 $`z`$ は $`\emptyset`$ と $`\{\emptyset\}`$ の 2 つだけ。
   $`\{\emptyset\} \in \emptyset`$ も $`\{\emptyset\} \in \{\emptyset\}`$ も成立しないので **偽**
@@ -300,7 +300,7 @@ $`\bar c`$ は $`M`$ の任意の元だったので $`(M,\in) \models \psi[\bar 
 をもう一度見る。$`x \in z`$ は原子式なので $`\Delta_0`$ であり、その前に $`\exists z`$ という
 $`\exists`$ ブロックが 1 つ付いている。従って 4.2 の形なので $`\Sigma_1`$ である。
 
-$`M = L_2`$、$`x := \{\emptyset\}`$ での計算は §3.5 のとおりで、外で **真**、中で **偽** だった。
+$`M = L_2`$、$`\bar a(x) = \{\emptyset\}`$ での計算は §3.5 のとおりで、外で **真**、中で **偽** だった。
 $`\Sigma_1`$ の上向き絶対の逆は成り立たない。証人 $`\{\{\emptyset\}\}`$ が $`M`$ の
 外にいるためである。
 

@@ -28,8 +28,8 @@ x = \emptyset \ \equiv\ \neg\exists z\,(z \in x)
 ```
 
 では $`z`$ は $`\exists z`$ に縛られていて自由でなく、$`x`$ と $`y`$ が自由変数である。
-論理式に値を入れて真偽を問うには、自由変数の全部に値を決めてやる必要がある。
-自由変数に入れる値を **パラメータ** と呼ぶ。
+論理式の真偽を問うには、自由変数の全部に値を決めてやる必要がある。
+自由変数に割り当てる値を **パラメータ** と呼ぶ。
 
 ## 2. 構造 (X, ∈) と充足
 
@@ -42,7 +42,7 @@ $`X`$ の元どうしの帰属を表す。
 **定義（割り当て）.** **割り当て** とは、変数全体から $`X`$ への関数 $`\bar a`$ のことである。
 変数 $`x`$ に対する値を $`\bar a(x) \in X`$ と書く。
 
-**意味.** 論理式の変数へ $`X`$ の中の具体的な値を入れる係である。§1 で見たとおり、
+**意味.** 論理式の変数へ $`X`$ の中の具体的な値を割り当てる係である。§1 で見たとおり、
 真偽を問うのに要るのは自由変数の値だけで、実際 $`(X,\in) \models \varphi[\bar a]`$ は
 $`\varphi`$ の自由変数における $`\bar a`$ の値だけで決まり、他の変数の値には依らない。
 定義域を変数全体にしておくのは、次の $`\bar a(z \mapsto c)`$ がいつでも意味を持つようにするためである。
@@ -87,9 +87,9 @@ $`\models`$ は「充足する」と読む記号である。
 $`X = \{\emptyset, \{\emptyset\}\}`$ とし、$`\varphi(x) \equiv \exists z\,(z \in x)`$ を取る。
 「$`x`$ は元を持つ」という意味である。
 
-- $`x := \emptyset`$ のとき。$`z \in X`$ で $`z \in \emptyset`$ となるものは無いので **偽**
-- $`x := \{\emptyset\}`$ のとき。$`z := \emptyset`$ は $`X`$ の元で $`\emptyset \in \{\emptyset\}`$
-  なので **真**
+- $`\bar a(x) = \emptyset`$ のとき。$`c \in X`$ で $`c \in \emptyset`$ となるものは無いので **偽**
+- $`\bar a(x) = \{\emptyset\}`$ のとき。$`c = \emptyset`$ は $`X`$ の元で
+  $`\emptyset \in \{\emptyset\}`$ なので **真**
 
 よって
 
@@ -100,7 +100,7 @@ $`X = \{\emptyset, \{\emptyset\}\}`$ とし、$`\varphi(x) \equiv \exists z\,(z 
 ### 量化子を X に閉じ込めることの効き目
 
 同じ $`X = \{\emptyset, \{\emptyset\}\}`$ で $`\psi(x) \equiv \exists z\,(x \in z)`$ を取る。
-「$`x`$ は何かの元である」という意味である。$`x := \{\emptyset\}`$ を入れる。
+「$`x`$ は何かの元である」という意味である。割り当てを $`\bar a(x) = \{\emptyset\}`$ と取る。
 
 - 構造 $`(X,\in)`$ では、候補 $`z`$ は $`\emptyset`$ と $`\{\emptyset\}`$ の 2 つだけ。
   $`\{\emptyset\} \in \emptyset`$ も $`\{\emptyset\} \in \{\emptyset\}`$ も成立しないので **偽**
@@ -153,7 +153,7 @@ $`b = \{\{\emptyset\}\}`$ は定義可能である。$`\varphi(x) \equiv \exists
 パラメータは使っていない（$`n = 0`$）。
 
 $`b = \{\emptyset\}`$ も定義可能である。こちらはパラメータを使う。
-$`\varphi(x, y) \equiv (x = y)`$ と取り、$`p_1 := \emptyset \in X`$ を入れると
+$`\varphi(x, y) \equiv (x = y)`$ と取り、パラメータを $`p_1 = \emptyset \in X`$ と取ると
 
 ```math
 \{\, x \in X : (X,\in) \models \varphi[x, \emptyset] \,\}
@@ -300,8 +300,8 @@ $`L_2 = \{\emptyset, \{\emptyset\}\}`$ の部分集合は 4 つ。有限なの�
 L_3 = \bigl\{\ \emptyset,\ \ \{\emptyset\},\ \ \{\{\emptyset\}\},\ \ \{\emptyset,\{\emptyset\}\}\ \bigr\}
 ```
 
-元は 4 個。パラメータを使えば $`\varphi(x,y) \equiv (x = y)`$ に $`y := \emptyset`$ を入れて
-$`\{\emptyset\}`$ を出す、という書き方もできる。
+元は 4 個。パラメータを使えば、$`\varphi(x,y) \equiv (x = y)`$ のパラメータを
+$`y = \emptyset`$ と取って $`\{\emptyset\}`$ を出す、という書き方もできる。
 
 ### 第 4 段以降
 
@@ -424,7 +424,7 @@ L_{\omega+1} \setminus L_\omega
 | $`L_\omega`$ 自身 | $`x = x`$ | なし |
 | $`L_\omega \setminus \omega`$（自然数でない有限集合全体） | 上の否定 | なし |
 | 単集合全体 $`\{\{a\} : a \in L_\omega\}`$ | $`\exists z\,(z \in x) \wedge \forall z\,\forall w\,(z \in x \wedge w \in x \to z = w)`$ | なし |
-| $`\omega \setminus (n+1) = \{n+1, n+2, \dots\}`$ | 「$`x`$ は順序数」$`\wedge\ y \in x`$ | $`y := n`$ |
+| $`\omega \setminus (n+1) = \{n+1, n+2, \dots\}`$ | 「$`x`$ は順序数」$`\wedge\ y \in x`$ | $`y = n`$ |
 | 偶数全体 $`\{0,2,4,\dots\}`$、素数全体 | 算術を書き下したもの。長いので略す | なし |
 
 $`\omega`$ の論理式を書き下すと
@@ -487,7 +487,7 @@ $`P`$ を使う $`V_\xi`$ では $`|V_{\omega+n}|`$ が $`n`$ ごとに指数で
 | 階数 | $`x \in L_\xi \Rightarrow \mathrm{rank}(x) \lt \xi`$ |
 
 **推移性と単調性の理由.** $`X`$ が推移的なら $`X \subseteq \mathrm{Def}(X)`$ である。実際
-$`a \in X`$ に対し $`\varphi(x,y) \equiv (x \in y)`$、$`y := a`$ とすると
+$`a \in X`$ に対し $`\varphi(x,y) \equiv (x \in y)`$、パラメータを $`y = a`$ と取ると
 $`\{x \in X : x \in a\} = a \cap X = a`$（推移性より $`a \subseteq X`$）。これで
 $`L_\xi \subseteq L_{\xi+1}`$ が出る。また $`b \in \mathrm{Def}(X)`$ なら
 $`b \subseteq X \subseteq \mathrm{Def}(X)`$ なので $`\mathrm{Def}(X)`$ も推移的である。
