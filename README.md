@@ -1,6 +1,6 @@
 [English](README-en.md) | [Japanese](README.md)
 
-# dh-bms-term
+# dh-bms-wf-formal
 
 DH 氏の論文「[Bashicu Matrix System ver. 4 の停止性と展開関係の整礎性](https://googology.fandom.com/ja/wiki/%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB:BM4(%E4%BD%9C%E6%88%90%E8%80%85%E6%83%85%E5%A0%B1%E4%BB%98%E3%81%8D).pdf)」の Lean 4 形式化。
 
