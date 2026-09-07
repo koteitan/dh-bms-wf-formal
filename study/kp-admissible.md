@@ -2,7 +2,12 @@
 
 # KP と許容順序数
 
-前提: [構成可能階層 L](constructible-hierarchy.md)、[レヴィ階層と絶対性](levy-hierarchy.md)
+前提
+
+| ノート | ここから使う言葉 |
+|---|---|
+| [構成可能階層 L](constructible-hierarchy.md) | 論理式、構造 $`(X,\in)`$、割り当て $`\bar a`$、充足 $`\models`$、推移的、$`\mathrm{Def}`$、$`L_\xi`$ |
+| [レヴィ階層と絶対性](levy-hierarchy.md) | 有界量化、$`\Delta_0`$、$`\Delta_0`$ 絶対性、$`\Sigma_1`$、$`\Pi_1`$ |
 
 ## 1. 文、公理系、モデル
 
