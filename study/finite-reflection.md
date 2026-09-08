@@ -23,8 +23,18 @@ $`\lhd_k`$ も「$`\eta`$ は許容順序数」も、これまでは外から見
 
 ### 1.2 Adm(η)（定義 11.1）
 
-$`\mathrm{KPAx}(d)`$ を「$`d`$ は KP の公理または公理スキーマの 1 インスタンスのコードである」という
-$`\Delta_0`$ 述語とする。
+**ここで定義する記号.** $`\mathrm{KPTrue}(M,U,S)`$ と $`\mathrm{Adm}(\eta)`$ の 2 つである。
+
+**すでにある記号.**
+
+| 記号 | 何か | どこ |
+|---|---|---|
+| $`\mathrm{KPAx}(d)`$ | 「$`d`$ は KP の公理または公理スキーマの 1 インスタンスのコードである」。$`\Delta_0`$ | 原文 §11 |
+| $`\mathrm{LCode}(\eta,M,c)`$ | $`L`$-階層コード | KP ノート §8 |
+| $`\mathrm{SatCode}(M,U,S)`$ | 充足コード | KP ノート §7 |
+
+**定義（原文 定義 11.1）.** $`\mathrm{KPTrue}`$ と $`\mathrm{Adm}`$ を、下記を満たす論理式として
+定義する。
 
 ```math
 \mathrm{KPTrue}(M,U,S) \ :\iff\ \forall d \in \omega\ \bigl(\mathrm{KPAx}(d) \to \langle d, \emptyset \rangle \in S\bigr)
@@ -60,6 +70,9 @@ $`L_\theta`$ の中に充足コードがあること（補題 10.5(1)）によ�
 
 ### 1.3 St_k(ξ)（定義 15.2）
 
+**定義（原文 定義 15.2）.** $`\mathrm{St}_k(\xi)`$ を、下記を満たす論理式として定義する。
+$`\mathrm{TV}_q(M)`$ は部分真理述語のノート 4.2 のものである。
+
 ```math
 \mathrm{St}_k(\xi) \ :\iff\ \forall M\, \forall c\ \bigl(\mathrm{LCode}(\xi,M,c) \to \mathrm{TV}_{k+2}(M)\bigr)
 \tag{15.2}
@@ -86,8 +99,12 @@ L_\theta \models \mathrm{St}_k(\xi) \quad\iff\quad \xi \lhd_k \theta . \tag{15.3
 
 ### 1.4 Rel_k(ξ,η)（定義 15.4）
 
-$`\mathrm{St}_k(\xi)^M`$ を、$`\mathrm{St}_k(\xi)`$ の全非有界量化を $`M`$ に制限した相対化とする。
-量化子が全部 $`M`$ で抑えられるので、これは $`\Delta_0`$ である。
+**相対化.** $`\mathrm{St}_k(\xi)^M`$ を、$`\mathrm{St}_k(\xi)`$ の全非有界量化を $`M`$ に
+制限した論理式とする。量化子が全部 $`M`$ で抑えられるので、これは $`\Delta_0`$ である。
+
+**定義（原文 定義 15.4）.** $`\mathrm{Rel}_k(\xi,\eta)`$ を、下記を満たす論理式として定義する。
+$`\mathrm{Ord}(\xi)`$ は「$`\xi`$ は順序数である」という $`\Delta_0`$ 述語である
+（レヴィ階層のノート 2.2）。
 
 ```math
 \mathrm{Rel}_k(\xi,\eta) \ :\iff\
@@ -107,8 +124,8 @@ $`\mathrm{Ord}`$ と $`\xi \lt \eta`$ も $`\Delta_0`$ である。$`\exists M \
 \mathrm{Rel}_k \in \hat\Sigma_1 .
 ```
 
-$`k`$ がいくら大きくても $`\hat\Sigma_1`$ のままである。相対化が複雑度を $`\Delta_0`$ に潰すからで、
-ここが 3.4 で効く。
+$`k`$ がいくら大きくても $`\hat\Sigma_1`$ のままである。相対化した結果が $`k`$ によらず
+$`\Delta_0`$ だからである。ここが 3.4 で効く。
 
 **補題 15.5（正しさ）.**
 
