@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mountain-Psi Function</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="menu-wrap">
+  <button id="menu-btn" aria-label="menu" aria-expanded="false">☰</button>
+  <div id="menu" hidden>
+    <label><input type="checkbox" id="dark-toggle"> dark mode</label>
+  </div>
+</div>
+
+<h1>Mountain-Psi Function</h1>
+
+<div id="panel">
+  <div class="col">
+    <label for="in">BMS:</label>
+    <textarea id="in" rows="3" spellcheck="false" autocapitalize="off"></textarea>
+  </div>
+  <div class="arrow">&rarr;</div>
+  <button id="convert">convert</button>
+  <div class="arrow">&rarr;</div>
+  <div class="col">
+    <label for="out">mountain-Psi:</label>
+    <textarea id="out" rows="3" spellcheck="false" readonly></textarea>
+  </div>
+</div>
+
+<p id="err" role="alert"></p>
+
+<script src="main.js"></script>
+</body>
+</html>

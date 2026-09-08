@@ -1,0 +1,105 @@
+:root {
+  color-scheme: dark;
+  --bg: #1a1a1a;
+  --fg: #d4d4d4;
+  --panel: #242424;
+  --line: #3a3a3a;
+  --accent: #6aa9ff;
+  --err: #ff7b72;
+}
+html.light {
+  color-scheme: light;
+  --bg: #fbfbfb;
+  --fg: #202020;
+  --panel: #ffffff;
+  --line: #d0d0d0;
+  --accent: #1a5fb4;
+  --err: #b42318;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 2rem 1rem 3rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+h1 {
+  margin: 0 0 1.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+#menu-wrap { position: fixed; top: .75rem; right: .75rem; z-index: 10; }
+
+#menu-btn {
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: .4rem .6rem;
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+#menu-btn:hover { border-color: var(--accent); }
+
+#menu {
+  margin-top: .4rem;
+  padding: .6rem .8rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+#menu label { display: flex; align-items: center; gap: .4rem; cursor: pointer; }
+
+#panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .75rem;
+}
+
+.col { flex: 1 1 22rem; min-width: 16rem; display: flex; flex-direction: column; gap: .3rem; }
+.col label { font-size: .85rem; opacity: .85; }
+
+textarea {
+  width: 100%;
+  padding: .55rem .7rem;
+  font: inherit;
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  resize: vertical;
+}
+textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+#out { color: var(--accent); }
+
+.arrow { padding-bottom: .6rem; opacity: .6; user-select: none; }
+
+#convert {
+  margin-bottom: .1rem;
+  padding: .55rem 1.1rem;
+  font: inherit;
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+#convert:hover { border-color: var(--accent); color: var(--accent); }
+
+#err { min-height: 1.6em; margin: 1rem 0 0; color: var(--err); }
+
+@media (max-width: 700px) {
+  .arrow { display: none; }
+  #panel { flex-direction: column; align-items: stretch; }
+  #convert { width: 100%; }
+}
