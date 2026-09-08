@@ -1,6 +1,6 @@
 'use strict';
 
-/* ---------- BMS -> mountain-Psi ---------- */
+/* ---------- BMS -> Stability-Mountain-Psi ---------- */
 
 // "(0,0,0)(1,1,1)" -> [[0,0,0],[1,1,1]]
 function parseBMS(text) {
@@ -82,7 +82,7 @@ function convert(cols, r) {
   return { text: roots.map(render).join('+'), L: L, P: P };
 }
 
-function bmsToMountainPsi(text) {
+function bmsToStabilityMountainPsi(text) {
   const parsed = parseBMS(text);
   if (parsed.error) return { error: parsed.error };
   return convert(parsed.cols, parsed.r);
@@ -117,7 +117,7 @@ inEl.value = state.input === undefined ? DEFAULT_INPUT : state.input;
 darkToggle.checked = dark;
 
 function run() {
-  const res = bmsToMountainPsi(inEl.value);
+  const res = bmsToStabilityMountainPsi(inEl.value);
   if (res.error) { outEl.value = ''; errEl.textContent = res.error; }
   else { outEl.value = res.text; errEl.textContent = ''; }
   save({ input: inEl.value });
@@ -145,4 +145,4 @@ document.addEventListener('click', function (e) {
 
 run();
 
-if (typeof module !== 'undefined') module.exports = { bmsToMountainPsi: bmsToMountainPsi };
+if (typeof module !== 'undefined') module.exports = { bmsToStabilityMountainPsi: bmsToStabilityMountainPsi };
