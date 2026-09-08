@@ -73,7 +73,7 @@ function convert(cols, r) {
   }
   function render(i) {
     const inner = children[i].length === 0 ? '0' : children[i].map(render).join('+');
-    return 'p_' + L[i] + '(' + inner + ')';
+    return 'p' + L[i] + '(' + inner + ')';
   }
   return { text: roots.map(render).join('+'), L: L, P: P };
 }
