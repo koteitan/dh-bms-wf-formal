@@ -82,6 +82,19 @@ $`\models`$ は「充足する」と読む記号である。
 一番大事な点は最後の 2 行である。**量化子 $`\exists z`$、$`\forall z`$ は $`X`$ の元だけを走る。**
 宇宙全体を走るのではない。
 
+**定義（証人）.** $`(X,\in) \models (\exists z\,\varphi)[\bar a]`$ が成り立つとき、
+上の定義の右辺に現れる $`c \in X`$、すなわち
+
+```math
+(X,\in) \models \varphi[\bar a(z \mapsto c)]
+```
+
+を満たす $`c`$ を、この存在主張の **証人** と呼ぶ。
+
+**意味.** $`\exists z\,\varphi`$ が真であることの理由になる具体的な値である。
+1 つとは限らず、複数あってもよい。$`\exists z_1 \cdots \exists z_m\,\varphi`$ のように
+存在量化が並ぶ場合は、値の組 $`(c_1, \dots, c_m)`$ を証人と呼ぶ。
+
 ### 例
 
 $`X = \{\emptyset, \{\emptyset\}\}`$ とし、$`\varphi(x) \equiv \exists z\,(z \in x)`$ を取る。
