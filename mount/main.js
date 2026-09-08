@@ -2,30 +2,26 @@
 
 /* ---------- BMS -> Stability-Mountain-Psi ---------- */
 
-// "(0,0,0)(1,1,1)" -> [[0,0,0],[1,1,1]]
-function parseBMS(text) {
+// Only "(", ")", digits, "," and newline survive.
+function sanitize(s) {
+  return s.replace(/[^0-9(),\n]/g, '');
+}
+
+// One line -> columns, padded with 0 up to the longest column.
+// "(0)(1,1,1)" becomes "(0,0,0)(1,1,1)".  Returns null when the line has no column.
+function parseLine(text) {
   const groups = text.match(/\(([^()]*)\)/g);
-  if (!groups || groups.length === 0) {
-    return { error: 'no column found. write it as (0,0,0)(1,1,1)' };
-  }
-  const cols = [];
-  for (let i = 0; i < groups.length; i++) {
-    const body = groups[i].slice(1, -1).trim();
-    if (body === '') return { error: 'column ' + i + ' is empty' };
-    const parts = body.split(',').map(function (s) { return s.trim(); });
-    const nums = [];
-    for (const p of parts) {
-      if (!/^\d+$/.test(p)) return { error: 'column ' + i + ': "' + p + '" is not a non-negative integer' };
-      nums.push(parseInt(p, 10));
-    }
-    cols.push(nums);
-  }
-  const r = cols[0].length;
-  for (let i = 0; i < cols.length; i++) {
-    if (cols[i].length !== r) {
-      return { error: 'column ' + i + ' has ' + cols[i].length + ' rows, but column 0 has ' + r };
-    }
-  }
+  if (!groups || groups.length === 0) return null;
+  const cols = groups.map(function (g) {
+    const body = g.slice(1, -1);
+    if (body === '') return [];
+    return body.split(',').map(function (p) {
+      return p === '' ? 0 : parseInt(p, 10);
+    });
+  });
+  let r = 0;
+  for (const c of cols) if (c.length > r) r = c.length;
+  for (const c of cols) while (c.length < r) c.push(0);
   return { cols: cols, r: r };
 }
 
@@ -82,10 +78,15 @@ function convert(cols, r) {
   return { text: roots.map(render).join('+'), L: L, P: P };
 }
 
+function lineToStabilityMountainPsi(line) {
+  const p = parseLine(line);
+  if (p === null) return '';
+  return convert(p.cols, p.r).text;
+}
+
+// Whole textarea: one output line per input line.
 function bmsToStabilityMountainPsi(text) {
-  const parsed = parseBMS(text);
-  if (parsed.error) return { error: parsed.error };
-  return convert(parsed.cols, parsed.r);
+  return sanitize(text).split('\n').map(lineToStabilityMountainPsi).join('\n');
 }
 
 /* ---------- UI ---------- */
@@ -107,23 +108,46 @@ document.documentElement.classList.toggle('light', !dark);
 
 const inEl = document.getElementById('in');
 const outEl = document.getElementById('out');
-const errEl = document.getElementById('err');
-const btn = document.getElementById('convert');
 const menuBtn = document.getElementById('menu-btn');
 const menu = document.getElementById('menu');
 const darkToggle = document.getElementById('dark-toggle');
 
-inEl.value = state.input === undefined ? DEFAULT_INPUT : state.input;
 darkToggle.checked = dark;
 
-function run() {
-  const res = bmsToStabilityMountainPsi(inEl.value);
-  if (res.error) { outEl.value = ''; errEl.textContent = res.error; }
-  else { outEl.value = res.text; errEl.textContent = ''; }
-  save({ input: inEl.value });
+// A ?bms= link wins over the saved input.
+const qbms = new URLSearchParams(location.search).get('bms');
+if (qbms !== null) inEl.value = sanitize(qbms);
+else if (state.input !== undefined) inEl.value = state.input;
+else inEl.value = DEFAULT_INPUT;
+
+// Drop invalid characters while keeping the caret where the user left it.
+function sanitizeField(el) {
+  const before = el.value;
+  const after = sanitize(before);
+  if (after === before) return;
+  const pos = el.selectionStart;
+  const head = before.slice(0, pos);
+  const removed = head.length - sanitize(head).length;
+  el.value = after;
+  const p = Math.max(0, pos - removed);
+  el.setSelectionRange(p, p);
 }
 
-btn.addEventListener('click', run);
+function updateURL(text, ok) {
+  const u = new URL(location.href);
+  if (ok) u.searchParams.set('bms', text); else u.searchParams.delete('bms');
+  history.replaceState(null, '', u.pathname + (u.search ? u.search : '') + u.hash);
+}
+
+function run() {
+  sanitizeField(inEl);
+  const lines = inEl.value.split('\n');
+  const out = lines.map(lineToStabilityMountainPsi);
+  outEl.value = out.join('\n');
+  save({ input: inEl.value });
+  updateURL(inEl.value, out.some(function (s) { return s !== ''; }));
+}
+
 inEl.addEventListener('input', run);
 
 darkToggle.addEventListener('change', function () {
@@ -144,5 +168,3 @@ document.addEventListener('click', function (e) {
 });
 
 run();
-
-if (typeof module !== 'undefined') module.exports = { bmsToStabilityMountainPsi: bmsToStabilityMountainPsi };

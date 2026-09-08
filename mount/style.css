@@ -84,22 +84,7 @@ textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
 .arrow { padding-bottom: .6rem; opacity: .6; user-select: none; }
 
-#convert {
-  margin-bottom: .1rem;
-  padding: .55rem 1.1rem;
-  font: inherit;
-  background: var(--panel);
-  color: var(--fg);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  cursor: pointer;
-}
-#convert:hover { border-color: var(--accent); color: var(--accent); }
-
-#err { min-height: 1.6em; margin: 1rem 0 0; color: var(--err); }
-
 @media (max-width: 700px) {
   .arrow { display: none; }
   #panel { flex-direction: column; align-items: stretch; }
-  #convert { width: 100%; }
 }
