@@ -282,13 +282,14 @@ Y = \{y_0 \lt \cdots \lt y_{s-1}\} \subseteq [\alpha, \beta)
 Y' = \{y'_0 \lt \cdots \lt y'_{s-1}\} \subseteq \alpha
 ```
 
-で次を満たすものが存在する。
+で次を満たすものが存在する。(17.1)〜(17.4) は**連言**である。丸括弧の中は、
+その式に暗黙に付いている全称量化子の範囲である。
 
 ```math
 \max(X \cup \{\omega\}) \lt y'_0 \tag{17.1}
 ```
 ```math
-x \lhd_k y_i \ \Longrightarrow\ x \lhd_k y'_i \qquad (x \in X,\ k \lt r) \tag{17.2}
+x \lhd_k y_i \ \Longrightarrow\ x \lhd_k y'_i \qquad (x \in X,\ i \lt s,\ k \lt r) \tag{17.2}
 ```
 ```math
 y_i \lhd_k y_j \ \Longrightarrow\ y'_i \lhd_k y'_j \qquad (i, j \lt s,\ k \lt r) \tag{17.3}
