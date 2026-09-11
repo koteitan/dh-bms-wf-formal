@@ -187,14 +187,14 @@ $`L_2 \subseteq L_3`$ である。割り当てを $`\bar a(x) = \{\emptyset\}`$ 
 である。つまり「$`\{\emptyset\}`$ を元に持つ集合が $`W`$ の中にあるか」を問うている。
 これを $`W = L_2`$ と $`W = L_3`$ で計算する。
 
-**$`W = L_2`$ のとき.** 候補 $`c`$ は $`\emptyset`$ と $`\{\emptyset\}`$ の 2 つである。
+**$`W = L_2`$ のとき:** 候補 $`c`$ は $`\emptyset`$ と $`\{\emptyset\}`$ の 2 つである。
 $`\{\emptyset\} \in \emptyset`$ も $`\{\emptyset\} \in \{\emptyset\}`$ も成立しない。従って
 
 ```math
 (L_2, \in) \models \psi[\bar a] \quad \text{は偽}
 ```
 
-**$`W = L_3`$ のとき.** $`L_3 = \{\emptyset, \{\emptyset\}, \{\{\emptyset\}\}, \{\emptyset,\{\emptyset\}\}\}`$ で、
+**$`W = L_3`$ のとき:** $`L_3 = \{\emptyset, \{\emptyset\}, \{\{\emptyset\}\}, \{\emptyset,\{\emptyset\}\}\}`$ で、
 $`c = \{\{\emptyset\}\}`$ が $`\{\emptyset\} \in \{\{\emptyset\}\}`$ を満たす。従って
 
 ```math

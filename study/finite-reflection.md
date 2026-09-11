@@ -166,9 +166,9 @@ $`|A| \lt |\kappa|`$ なるものについて必ず $`\sup A \lt \kappa`$ とな
 
 **定義（$`\lt_L`$）.** $`\xi`$ に沿った超限再帰で、$`L_\xi`$ の整列順序 $`\lt_\xi`$ を作る。
 
-**$`\xi = 0`$.** $`L_0 = \emptyset`$ なので空の順序。
+**$`\xi = 0`$ のとき:** $`L_0 = \emptyset`$ なので空の順序。
 
-**$`\xi + 1`$.** $`L_{\xi+1} = \mathrm{Def}(L_\xi)`$ の元は、対 $`\langle e, a \rangle`$
+**$`\xi + 1`$ のとき:** $`L_{\xi+1} = \mathrm{Def}(L_\xi)`$ の元は、対 $`\langle e, a \rangle`$
 （$`e`$ は論理式コード、$`a`$ は $`L_\xi`$ の元の有限列）から切り出される
 （構成可能階層のノート §4）。まずこの対を並べる。
 
@@ -191,7 +191,7 @@ p(x) \lt p(y) & x, y \notin L_\xi \cr
 \end{cases}
 ```
 
-**極限 $`\lambda`$.** $`\lt_\lambda = \bigcup_{\xi \lt \lambda} \lt_\xi`$ とする。
+**極限 $`\lambda`$ のとき:** $`\lt_\lambda = \bigcup_{\xi \lt \lambda} \lt_\xi`$ とする。
 $`\lt_\xi`$ どうしは食い違わないので、これは順序になる。
 
 最後に $`\lt_L = \bigcup_\xi \lt_\xi`$ とする。
