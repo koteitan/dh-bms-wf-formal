@@ -282,20 +282,19 @@ Y = \{y_0 \lt \cdots \lt y_{s-1}\} \subseteq [\alpha, \beta)
 Y' = \{y'_0 \lt \cdots \lt y'_{s-1}\} \subseteq \alpha
 ```
 
-で次を満たすものが存在する。(17.1)〜(17.4) は**連言**である。丸括弧の中は、
-その式に暗黙に付いている全称量化子の範囲である。
+で次の (17.1)〜(17.4) を全て満たすものが存在する。
 
 ```math
 \max(X \cup \{\omega\}) \lt y'_0 \tag{17.1}
 ```
 ```math
-x \lhd_k y_i \ \Longrightarrow\ x \lhd_k y'_i \qquad (x \in X,\ i \lt s,\ k \lt r) \tag{17.2}
+\forall x \in X\ \forall i \lt s\ \forall k \lt r\ \bigl(x \lhd_k y_i \Longrightarrow x \lhd_k y'_i\bigr) \tag{17.2}
 ```
 ```math
-y_i \lhd_k y_j \ \Longrightarrow\ y'_i \lhd_k y'_j \qquad (i, j \lt s,\ k \lt r) \tag{17.3}
+\forall i \lt s\ \forall j \lt s\ \forall k \lt r\ \bigl(y_i \lhd_k y_j \Longrightarrow y'_i \lhd_k y'_j\bigr) \tag{17.3}
 ```
 ```math
-y_i \lhd_m \beta \ \Longrightarrow\ y'_i \lhd_m \alpha \qquad (i \lt s,\ m \lt n) \tag{17.4}
+\forall i \lt s\ \forall m \lt n\ \bigl(y_i \lhd_m \beta \Longrightarrow y'_i \lhd_m \alpha\bigr) \tag{17.4}
 ```
 
 **読み方.** $`[\alpha, \beta)`$ にある有限個の許容順序数 $`Y`$ を $`\alpha`$ 未満へ押し下げても、
