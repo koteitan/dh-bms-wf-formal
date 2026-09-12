@@ -1,4 +1,4 @@
-[← Back](README.md)
+[← Back](README.md) | [English](en/rule.md) | [Japanese](rule.md)
 
 # diff/ の作業ルール
 

@@ -1,4 +1,4 @@
-[← Back](README.md)
+[← Back](README.md) | [English](en/06-finite-reflection.md) | [Japanese](06-finite-reflection.md)
 
 # 有限行反映（定理 17.1）
 
@@ -6,11 +6,11 @@
 
 | ノート | ここから使う言葉 |
 |---|---|
-| [構成可能階層 L](constructible-hierarchy.md) | $`L_\xi`$、$`L_\xi \cap \mathrm{Ord} = \xi`$（§9） |
-| [レヴィ階層と絶対性](levy-hierarchy.md) | $`\Delta_0`$、$`\Delta_0`$ 絶対性 |
-| [KP と許容順序数](kp-admissible.md) | KP、許容順序数、$`\mathrm{SatCode}`$、$`\mathrm{LCode}`$、系 10.6 |
-| [厳密交代ブロック階層と安定関係](alternating-blocks.md) | **$`\hat\Sigma_q`$、$`\hat\Pi_q`$（1.1）**、$`\prec^*_q`$、$`\lhd_k`$、補題 15.1、なぜ +2 か（3.3） |
-| [部分真理述語と有限段 Tarski–Vaught](truth-predicates.md) | $`\mathrm{TV}_q`$、補題 14.3、定理 14.4 |
+| [構成可能階層 L](01-constructible-hierarchy.md) | $`L_\xi`$、$`L_\xi \cap \mathrm{Ord} = \xi`$（§9） |
+| [レヴィ階層と絶対性](02-levy-hierarchy.md) | $`\Delta_0`$、$`\Delta_0`$ 絶対性 |
+| [KP と許容順序数](03-kp-admissible.md) | KP、許容順序数、$`\mathrm{SatCode}`$、$`\mathrm{LCode}`$、系 10.6 |
+| [厳密交代ブロック階層と安定関係](04-alternating-blocks.md) | **$`\hat\Sigma_q`$、$`\hat\Pi_q`$（1.1）**、$`\prec^*_q`$、$`\lhd_k`$、補題 15.1、なぜ +2 か（3.3） |
+| [部分真理述語と有限段 Tarski–Vaught](05-truth-predicates.md) | $`\mathrm{TV}_q`$、補題 14.3、定理 14.4 |
 
 ## 1. 内部表示
 

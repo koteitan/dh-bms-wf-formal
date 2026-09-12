@@ -1,4 +1,4 @@
-[← Back](../README.md)
+[← Back](../README.md) | [English](en/README.md) | [Japanese](README.md)
 
 # 形式化差異
 

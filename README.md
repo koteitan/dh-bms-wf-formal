@@ -1,4 +1,4 @@
-[English](README-en.md) | [Japanese](README.md)
+[English](README_en.md) | [Japanese](README.md)
 
 # dh-bms-wf-formal
 
@@ -33,19 +33,22 @@ theorem BM4.ST.R_wf_unconditional (r : ℕ) : WellFounded (BM4.R r)
 
 ```
 .
-├── README.md                  このファイル
-├── paper-corrections.md       論文への修正案（形式化して見つかったもの）
+├── README.md                  このファイル（日本語）
+├── README_en.md               このファイル（英語）
 ├── diff/                      形式化差異（論文の命題ごとに原文・Lean・理由）
 │   ├── README.md              目次
 │   ├── rule.md                書き方のルール
-│   └── P-01.md 〜 P-14.md
-├── plan/
-│   ├── fidelity-audit.md      原文忠実性の監査結果（節ごとに独立監査）
-│   ├── fidelity-audit-fix.md  監査が挙げた U（迂回）74 件の修正作業の記録
-│   └── U2P.md                 U と論文中の命題の対応表
+│   ├── P-01.md 〜 P-14.md
+│   └── en/                    同じ内容の英語版
+├── study/                     原文を読むための背景ノート
+│   ├── README.md              目次
+│   ├── rule.md                書き方のルール
+│   ├── 01-constructible-hierarchy.md 〜 07-stable-labels.md
+│   └── en/                    同じ内容の英語版
 ├── VERSION
 ├── lean/                      Lean 4 プロジェクト
-│   ├── README.md              形式化の詳細（ファイルと論文の対応表）
+│   ├── README.md              形式化の詳細（ファイルと論文の対応表、日本語）
+│   ├── README_en.md           同上（英語）
 │   ├── lakefile.toml
 │   ├── lean-toolchain
 │   ├── Bm4.lean               ルートモジュール
@@ -63,6 +66,9 @@ theorem BM4.ST.R_wf_unconditional (r : ℕ) : WellFounded (BM4.R r)
 │   └── test/                  外部実装との突き合わせ（58 例）
 └── plan/                      作業メモ（日本語のみ）
     ├── README.md              plan/ の各文書の説明
+    ├── fidelity-audit.md      原文忠実性の監査結果（節ごとに独立監査）
+    ├── fidelity-audit-fix.md  監査が挙げた U（迂回）74 件の修正作業の記録
+    ├── U2P.md                 U と論文中の命題の対応表
     ├── definitions-audit.md   定義の棚卸し（標準数学 / 形式化の道具 / 改変）
     ├── paper-redundancies.md  原文にあるが必要なかった部分
     ├── formalization-detours.md  こちらの都合で迂回した部分
@@ -78,6 +84,12 @@ theorem BM4.ST.R_wf_unconditional (r : ℕ) : WellFounded (BM4.R r)
 `lean/Bm4/SetTheory/` が全体の約 77% を占める。集合論の道具（構成可能階層 L、許容順序数、
 Δ₀ 論理式のコード化、充足コード、交代ブロック真理述語、有限行反映）を一から作っている。
 各ファイルと論文の節の対応は [lean/README.md](lean/README.md) の表を参照。
+
+## 背景ノート
+
+原文が既知として使う集合論・モデル論を、定義と小さい例から書き起こしたノートを
+[study/](study/README.md) に置いている。構成可能階層 L、レヴィ階層、KP と許容順序数、
+厳密交代ブロック階層、部分真理述語、有限行反映、安定ラベルの 7 本である。
 
 ## ビルド環境
 

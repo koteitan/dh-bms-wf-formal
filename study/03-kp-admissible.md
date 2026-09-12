@@ -1,4 +1,4 @@
-[← Back](README.md)
+[← Back](README.md) | [English](en/03-kp-admissible.md) | [Japanese](03-kp-admissible.md)
 
 # KP と許容順序数
 
@@ -6,8 +6,8 @@
 
 | ノート | ここから使う言葉 |
 |---|---|
-| [構成可能階層 L](constructible-hierarchy.md) | 論理式、構造 $`(X,\in)`$、割り当て $`\bar a`$、充足 $`\models`$、推移的、$`\mathrm{Def}`$、$`L_\xi`$ |
-| [レヴィ階層と絶対性](levy-hierarchy.md) | 有界量化、$`\Delta_0`$、$`\Delta_0`$ 絶対性、$`\Sigma_1`$、$`\Pi_1`$ |
+| [構成可能階層 L](01-constructible-hierarchy.md) | 論理式、構造 $`(X,\in)`$、割り当て $`\bar a`$、充足 $`\models`$、推移的、$`\mathrm{Def}`$、$`L_\xi`$ |
+| [レヴィ階層と絶対性](02-levy-hierarchy.md) | 有界量化、$`\Delta_0`$、$`\Delta_0`$ 絶対性、$`\Sigma_1`$、$`\Pi_1`$ |
 
 ## 1. 文、公理系、モデル
 

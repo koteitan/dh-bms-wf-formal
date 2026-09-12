@@ -1,4 +1,4 @@
-[English](README-en.md) | [Japanese](README.md)
+[English](README_en.md) | [Japanese](README.md)
 
 # dh-bms-wf-formal
 
@@ -39,19 +39,21 @@ statements and lines of argument takes priority over shorter proofs or weaker hy
 ```
 .
 ├── README.md                  this file (Japanese)
-├── README-en.md               this file (English)
-├── paper-corrections.md       corrections proposed to the paper, found while formalizing
+├── README_en.md               this file (English)
 ├── diff/                      formalization gaps, one page per proposition of the paper
 │   ├── README.md              index
 │   ├── rule.md                how to write these pages
-│   └── P-01.md .. P-14.md
-├── plan/
-│   ├── fidelity-audit.md      the fidelity audit, one independent agent per section
-│   ├── fidelity-audit-fix.md  the repair log for the 74 U (detour) findings
-│   └── U2P.md                 which U belongs to which proposition
+│   ├── P-01.md .. P-14.md
+│   └── en/                    the same content in English
+├── study/                     background notes for reading the paper
+│   ├── README.md              index
+│   ├── rule.md                how to write these notes
+│   ├── 01-constructible-hierarchy.md .. 07-stable-labels.md
+│   └── en/                    the same content in English
 ├── VERSION
 ├── lean/                      the Lean 4 project
-│   ├── README.md              details: which file corresponds to which section
+│   ├── README.md              details: which file corresponds to which section (Japanese)
+│   ├── README_en.md           the same (English)
 │   ├── lakefile.toml
 │   ├── lean-toolchain
 │   ├── Bm4.lean               root module
@@ -69,6 +71,9 @@ statements and lines of argument takes priority over shorter proofs or weaker hy
 │   └── test/                  comparison against an external implementation (58 cases)
 └── plan/                      working notes (Japanese only)
     ├── README.md              what each document under plan/ is
+    ├── fidelity-audit.md      the fidelity audit, one independent agent per section
+    ├── fidelity-audit-fix.md  the repair log for the 74 U (detour) findings
+    ├── U2P.md                 which U belongs to which proposition
     ├── definitions-audit.md   inventory: standard maths / formalization tools / deviations
     ├── paper-redundancies.md  parts of the paper that turned out to be unnecessary
     ├── formalization-detours.md  places we could not follow the paper, and why
@@ -79,12 +84,19 @@ statements and lines of argument takes priority over shorter proofs or weaker hy
 
 Where the Lean text could not follow the paper literally, there is one page per proposition
 of the paper: the paper's statement and proof, the Lean statement and proof, and why it could
-not be written the paper's way. Index: [diff/README.md](diff/README.md).
+not be written the paper's way. Index: [diff/en/README.md](diff/en/README.md).
 
 `lean/Bm4/SetTheory/` is about 77% of the whole. It builds the set theory from scratch: the
 constructible hierarchy `L`, admissible ordinals, codes of Δ₀ formulas, satisfaction codes, the
 alternating-block truth predicates and finite pattern reflection. See the table in
-[lean/README-en.md](lean/README-en.md) for the file-to-section correspondence.
+[lean/README_en.md](lean/README_en.md) for the file-to-section correspondence.
+
+## Background notes
+
+[study/](study/en/README.md) holds notes writing out, from definitions and small examples, the set
+theory and model theory the paper takes as known: the constructible hierarchy L, the Levy hierarchy,
+KP and admissible ordinals, the strict alternating block hierarchy, partial truth predicates, finite
+row reflection, and stable labels — seven notes in all.
 
 ## Build environment
 
@@ -139,4 +151,4 @@ BMS=<path to the external implementation> LEANPROJ=. test/compare.sh
 
 For the background results this development takes from Mathlib rather than proving, and where
 they are found in the literature, see "Background taken as standard" in
-[lean/README-en.md](lean/README-en.md).
+[lean/README_en.md](lean/README_en.md).

@@ -1,4 +1,4 @@
-[← Back](README.md)
+[← Back](README.md) | [English](en/01-constructible-hierarchy.md) | [Japanese](01-constructible-hierarchy.md)
 
 # 構成可能階層 L
 

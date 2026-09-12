@@ -1,4 +1,4 @@
-[← Back](../README.md) | [English](README-en.md) | [Japanese](README.md)
+[← Back](../README_en.md) | [English](README_en.md) | [Japanese](README.md)
 
 # Lean 4 formalization of the BM4 termination proof
 

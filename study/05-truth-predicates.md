@@ -1,4 +1,4 @@
-[← Back](README.md)
+[← Back](README.md) | [English](en/05-truth-predicates.md) | [Japanese](05-truth-predicates.md)
 
 # 部分真理述語と有限段 Tarski–Vaught
 
@@ -6,10 +6,10 @@
 
 | ノート | ここから使う言葉 |
 |---|---|
-| [構成可能階層 L](constructible-hierarchy.md) | 論理式、構造 $`(X,\in)`$、割り当て $`\bar a`$、充足 $`\models`$、推移的、$`L_\xi`$ |
-| [レヴィ階層と絶対性](levy-hierarchy.md) | 有界量化、ブロック、$`\Delta_0`$、$`\Delta_0`$ 絶対性 |
-| [KP と許容順序数](kp-admissible.md) | KP、許容順序数、$`\mathrm{SatCode}`$、$`\mathrm{LCode}`$、コード、$`\langle e, a \rangle`$ |
-| [厳密交代ブロック階層と安定関係](alternating-blocks.md) | **$`\hat\Sigma_q`$、$`\hat\Pi_q`$（1.1）**、行列、padding と有限結合（1.5）、$`\prec^*_q`$、$`\lhd_k`$ |
+| [構成可能階層 L](01-constructible-hierarchy.md) | 論理式、構造 $`(X,\in)`$、割り当て $`\bar a`$、充足 $`\models`$、推移的、$`L_\xi`$ |
+| [レヴィ階層と絶対性](02-levy-hierarchy.md) | 有界量化、ブロック、$`\Delta_0`$、$`\Delta_0`$ 絶対性 |
+| [KP と許容順序数](03-kp-admissible.md) | KP、許容順序数、$`\mathrm{SatCode}`$、$`\mathrm{LCode}`$、コード、$`\langle e, a \rangle`$ |
+| [厳密交代ブロック階層と安定関係](04-alternating-blocks.md) | **$`\hat\Sigma_q`$、$`\hat\Pi_q`$（1.1）**、行列、padding と有限結合（1.5）、$`\prec^*_q`$、$`\lhd_k`$ |
 
 ## 1. なぜ部分真理述語が要るのか
 

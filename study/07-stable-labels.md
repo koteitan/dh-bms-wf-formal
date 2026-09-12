@@ -1,4 +1,4 @@
-[← Back](README.md)
+[← Back](README.md) | [English](en/07-stable-labels.md) | [Japanese](07-stable-labels.md)
 
 # 安定ラベルと高さ下降（第 IV 部）
 
@@ -6,8 +6,8 @@
 
 | ノート | ここから使う言葉 |
 |---|---|
-| [厳密交代ブロック階層と安定関係](alternating-blocks.md) | **$`\lhd_k`$（3.1）**、補題 15.1(2) の推移性 |
-| [有限行反映（定理 17.1）](finite-reflection.md) | **定理 17.1 の (17.1)〜(17.4)（3.1）** |
+| [厳密交代ブロック階層と安定関係](04-alternating-blocks.md) | **$`\lhd_k`$（3.1）**、補題 15.1(2) の推移性 |
+| [有限行反映（定理 17.1）](06-finite-reflection.md) | **定理 17.1 の (17.1)〜(17.4)（3.1）** |
 
 上の 2 つの前提もすべて必要である。
 

@@ -1,4 +1,4 @@
-[← Back](../README.md) | [English](README-en.md) | [Japanese](README.md)
+[← Back](../README.md) | [English](README_en.md) | [Japanese](README.md)
 
 # BM4 停止性証明の Lean 4 形式化
 

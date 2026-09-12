@@ -1,8 +1,8 @@
-[← Back](README.md)
+[← Back](README.md) | [English](en/02-levy-hierarchy.md) | [Japanese](02-levy-hierarchy.md)
 
 # レヴィ階層と絶対性
 
-前提: [構成可能階層 L](constructible-hierarchy.md)（論理式、構造 $`(X,\in)`$、充足 $`\models`$、推移的集合）
+前提: [構成可能階層 L](01-constructible-hierarchy.md)（論理式、構造 $`(X,\in)`$、充足 $`\models`$、推移的集合）
 
 ## 1. 有界量化と非有界量化
 
