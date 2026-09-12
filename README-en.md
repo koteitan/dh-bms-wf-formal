@@ -2,9 +2,17 @@
 
 # dh-bms-wf-formal
 
-A Lean 4 formalization of DH's paper [*"Bashicu Matrix System ver. 4 の停止性と展開関係の整礎性"*](https://googology.fandom.com/ja/wiki/%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB:BM4(%E4%BD%9C%E6%88%90%E8%80%85%E6%83%85%E5%A0%B1%E4%BB%98%E3%81%8D).pdf)
+DH proved the termination of BM4 (Bashicu Matrix System version 4) and the well-foundedness of
+its expansion relation, and on 4 September 2026 [published](https://googology.fandom.com/ja/wiki/%E3%83%A6%E3%83%BC%E3%82%B6%E3%83%BC%E3%83%96%E3%83%AD%E3%82%B0:DeltaEta22223/BM4%E3%81%AE%E5%81%9C%E6%AD%A2%E6%80%A7%E8%A8%BC%E6%98%8E)
+the paper [*"Bashicu Matrix System ver. 4 の停止性と展開関係の整礎性"*](https://googology.fandom.com/ja/wiki/%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB:BM4(%E4%BD%9C%E6%88%90%E8%80%85%E6%83%85%E5%A0%B1%E4%BB%98%E3%81%8D).pdf)
 (Termination of the Bashicu Matrix System version 4 and well-foundedness of its expansion
-relation).
+relation) on the [Japanese Googology Wiki](https://googology.fandom.com/ja/wiki/%E5%B7%A8%E5%A4%A7%E6%95%B0%E7%A0%94%E7%A9%B6Wiki).
+
+This repository is a Lean 4 formalization of that proof.
+
+## History
+- 4 September 2026: DH published the paper on the Japanese Googology Wiki.
+- 5 September 2026: the formalization was completed and published on GitHub.
 
 ## Purpose
 
